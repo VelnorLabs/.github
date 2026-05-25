@@ -1,0 +1,235 @@
+# ---------------------------------------------------------------------------
+# VelnorLabs · Stage 5 — Promote to Staging · T-W0-012
+#
+# Manual gate: triggered via workflow_dispatch.
+# Requires approve_qa == 'true' to proceed (hard gate — job skips otherwise).
+#
+# Stage 5 flow:
+#   OIDC → ECS update (staging) → Atlas migrate (staging) → QA plan trigger → deployment status
+#
+# Environment: staging
+#   Requires environment approval configured in GitHub repository settings
+#   under Settings → Environments → staging → Required reviewers.
+#
+# Invariants:
+#   - Pinned action SHAs (Invariant §4)
+#   - OIDC auth — no static AWS keys (T-W0-010 requirement)
+#   - No hardcoded secrets — all via ${{ secrets.X }} or OIDC
+#   - Emits staging_deploy_status check for caller reference
+# ---------------------------------------------------------------------------
+
+name: Stage 5 · Promote to Staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service name (e.g. chat-api, agent-gateway)'
+        required: true
+        type: string
+      image_tag:
+        description: 'Full ECR URI with tag of the image to promote'
+        required: true
+        type: string
+      approve_qa:
+        description: 'QA sign-off — must be true to run promotion (set false to dry-run gate check only)'
+        required: true
+        type: boolean
+        default: false
+
+env:
+  AWS_REGION: 'us-east-1'
+  GHA_ROLE_ARN: 'arn:aws:iam::113831183566:role/velnor-github-actions'
+  ECS_CLUSTER: 'velnor-staging-cluster'
+  IAC_REPO_PATH: 'velnor-iac'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Stage 5: Promote to Staging
+  # Gate: approve_qa input must be 'true'
+  # ---------------------------------------------------------------------------
+  promote-to-staging:
+    name: Stage 5 · promote ${{ inputs.service }} → staging
+    runs-on: ubuntu-latest
+    # Hard gate: skip entire job if QA has not been signed off
+    if: ${{ inputs.approve_qa == true }}
+    environment: staging   # Requires environment approval in GitHub settings
+    permissions:
+      id-token: write      # OIDC token for AWS
+      contents: read
+      deployments: write   # For posting GitHub deployment status
+    outputs:
+      staging_deploy_status: ${{ steps.set-staging-status.outputs.staging_deploy_status }}
+
+    steps:
+      - name: Checkout calling repo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      # Checkout velnor-iac to a subdirectory so atlas_migrate.sh is available
+      - name: Checkout velnor-iac
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          repository: VelnorLabs/velnor-iac
+          path: ${{ env.IAC_REPO_PATH }}
+          token: ${{ github.token }}
+
+      # -----------------------------------------------------------------------
+      # Step 1: OIDC — assume velnor-github-actions role
+      # -----------------------------------------------------------------------
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502  # v4.0.2
+        with:
+          role-to-assume: ${{ env.GHA_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-staging-${{ inputs.service }}-${{ github.run_id }}
+
+      - name: Verify AWS identity (OIDC smoke test)
+        run: aws sts get-caller-identity
+
+      # -----------------------------------------------------------------------
+      # Step 2: Update ECS service on staging cluster with new task definition
+      # Retrieves the latest task definition revision registered for the service
+      # and forces a new deployment with the promoted image.
+      # -----------------------------------------------------------------------
+      - name: Register new ECS task definition (staging)
+        id: register-task-def
+        run: |
+          set -euo pipefail
+          FAMILY="velnor-${{ inputs.service }}"
+          echo "Fetching current task definition for $FAMILY..."
+
+          # Get current task definition and update the image
+          TASK_DEF=$(aws ecs describe-task-definition \
+            --task-definition "$FAMILY" \
+            --query 'taskDefinition' \
+            --output json)
+
+          # Inject new image tag into the task definition
+          NEW_TASK_DEF=$(echo "$TASK_DEF" | \
+            jq --arg IMAGE "${{ inputs.image_tag }}" \
+              '.containerDefinitions[0].image = $IMAGE |
+               del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
+                   .compatibilities, .registeredAt, .registeredBy)')
+
+          # Register the updated task definition
+          NEW_REVISION=$(echo "$NEW_TASK_DEF" | \
+            aws ecs register-task-definition \
+              --cli-input-json /dev/stdin \
+              --query 'taskDefinition.revision' \
+              --output text)
+
+          echo "Registered task definition revision: $NEW_REVISION"
+          echo "task_def_revision=$NEW_REVISION" >> "$GITHUB_OUTPUT"
+          echo "task_def_arn=$FAMILY:$NEW_REVISION" >> "$GITHUB_OUTPUT"
+
+      - name: Force new ECS deployment (staging)
+        run: |
+          set -euo pipefail
+          aws ecs update-service \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --service "velnor-${{ inputs.service }}" \
+            --task-definition "${{ steps.register-task-def.outputs.task_def_arn }}" \
+            --force-new-deployment \
+            --output json | jq '.service.deployments[0] | {status, taskDefinition, desiredCount}'
+
+      - name: Wait for ECS service stability (staging)
+        run: |
+          echo "Waiting for velnor-${{ inputs.service }} to stabilize on ${{ env.ECS_CLUSTER }}..."
+          aws ecs wait services-stable \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --services "velnor-${{ inputs.service }}"
+          echo "ECS service is stable on staging."
+
+      # -----------------------------------------------------------------------
+      # Step 3: Atlas migrations for staging
+      # -----------------------------------------------------------------------
+      - name: Run Atlas migrations (staging)
+        env:
+          ENV: staging
+        run: |
+          chmod +x "${{ env.IAC_REPO_PATH }}/scripts/atlas_migrate.sh"
+          "${{ env.IAC_REPO_PATH }}/scripts/atlas_migrate.sh" staging
+
+      # -----------------------------------------------------------------------
+      # Step 4: QA test plan trigger (stub)
+      # STUB: Real QA automation wired in T-W4-xxx
+      # -----------------------------------------------------------------------
+      - name: QA test plan trigger
+        run: |
+          echo "QA test plan triggered for ${{ inputs.service }} @ ${{ inputs.image_tag }}"
+          echo "Environment: staging"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Run ID: ${{ github.run_id }}"
+          echo "STUB: Real QA test harness invocation deferred to T-W4-xxx."
+
+      # -----------------------------------------------------------------------
+      # Step 5: Post GitHub deployment status
+      # -----------------------------------------------------------------------
+      - name: Create GitHub deployment
+        id: create-deployment
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: 'staging',
+              description: `Promote ${{ inputs.service }}:${{ inputs.image_tag }} to staging`,
+              auto_merge: false,
+              required_contexts: [],
+            });
+            console.log(`Created deployment ID: ${deployment.data.id}`);
+            core.setOutput('deployment_id', deployment.data.id);
+
+      - name: Post deployment status (success)
+        if: success()
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.create-deployment.outputs.deployment_id }},
+              state: 'success',
+              description: 'staging_deploy_status: success',
+              environment_url: 'https://staging.velnor.ai',
+            });
+
+      - name: Post deployment status (failure)
+        if: failure()
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.create-deployment.outputs.deployment_id }},
+              state: 'failure',
+              description: 'staging_deploy_status: failure',
+            });
+
+      - name: Set staging deploy status output
+        id: set-staging-status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "staging_deploy_status=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "staging_deploy_status=failure" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Gate-blocked notification — runs when approve_qa is false
+  # ---------------------------------------------------------------------------
+  qa-gate-blocked:
+    name: Stage 5 · QA gate blocked (approve_qa=false)
+    runs-on: ubuntu-latest
+    if: ${{ inputs.approve_qa != true }}
+    steps:
+      - name: Gate blocked — QA not approved
+        run: |
+          echo "Stage 5 promotion to staging BLOCKED."
+          echo "approve_qa input was: ${{ inputs.approve_qa }}"
+          echo "Set approve_qa=true to run the promotion."
+          exit 1
