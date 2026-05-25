@@ -41,6 +41,11 @@ on:
         required: false
         type: string
         default: dev
+      ecs_cluster:
+        description: "ECS cluster name to deploy to"
+        required: false
+        type: string
+        default: "velnor-dev-cluster"
     secrets:
       AWS_ACCOUNT_ID:
         description: 'AWS account ID for OIDC role'
@@ -59,7 +64,7 @@ on:
 env:
   AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
   GHA_ROLE_ARN: 'arn:aws:iam::113831183566:role/velnor-github-actions'
-  ECS_CLUSTER: 'velnor-dev-cluster'
+  ECS_CLUSTER: ${{ inputs.ecs_cluster }}
   IAC_REPO_PATH: 'velnor-iac'
 
 # ---------------------------------------------------------------------------
