@@ -1,0 +1,175 @@
+# ---------------------------------------------------------------------------
+# _sdk-bypass-check.yml · T-W0-020
+#
+# Detects service-repo code that imports AWS, DB, or AI provider packages
+# directly instead of routing through velnor_platform_sdk (Python) or
+# velnor_platform_sdk_go (Go).
+#
+# Called via workflow_call from service-repo CI pipelines:
+#
+#   jobs:
+#     sdk-bypass-check:
+#       uses: VelnorLabs/.github/.github/workflows/_sdk-bypass-check.yml@main
+#       with:
+#         repo-type: py        # or: go
+#       secrets: inherit
+#
+# For Python repos the audit tool is fetched from velnor-platform-sdk-py.
+# For Go repos the audit tool is fetched from velnor-platform-sdk-go.
+#
+# Exit code 1 → job fails, PR is blocked.
+#
+# Invariants enforced:
+#   - Pinned action SHAs (Invariant §4)
+#   - No static AWS keys (read-only public repos)
+# ---------------------------------------------------------------------------
+
+on:
+  workflow_call:
+    inputs:
+      repo-type:
+        description: "Language of the calling service repo: 'py' or 'go'"
+        required: true
+        type: string
+      scan-root:
+        description: "Subdirectory to scan within the service repo (default: .)"
+        required: false
+        type: string
+        default: "."
+      sdk-py-ref:
+        description: "velnor-platform-sdk-py git ref to pull the audit tool from"
+        required: false
+        type: string
+        default: "main"
+      sdk-go-ref:
+        description: "velnor-platform-sdk-go git ref to pull the audit tool from"
+        required: false
+        type: string
+        default: "main"
+
+jobs:
+  sdk-bypass-check:
+    name: SDK bypass check (${{ inputs.repo-type }})
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write   # needed to post a PR comment on failure
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Checkout the service repo (the repo calling this workflow)
+      # -----------------------------------------------------------------------
+      - name: Checkout service repo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          path: service-repo
+
+      # -----------------------------------------------------------------------
+      # 2a. Python path: fetch audit tool + run it
+      # -----------------------------------------------------------------------
+      - name: Checkout velnor-platform-sdk-py (Python audit tool)
+        if: inputs.repo-type == 'py'
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          repository: VelnorLabs/velnor-platform-sdk-py
+          ref: ${{ inputs.sdk-py-ref }}
+          path: velnor-platform-sdk-py
+          token: ${{ secrets.VELNOR_SDK_READ_TOKEN }}
+
+      - name: Set up Python
+        if: inputs.repo-type == 'py'
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2f  # v5.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Run Python import audit
+        if: inputs.repo-type == 'py'
+        id: py-audit
+        run: |
+          python velnor-platform-sdk-py/tools/import_audit.py \
+            --root service-repo/${{ inputs.scan-root }}
+        continue-on-error: true
+
+      # -----------------------------------------------------------------------
+      # 2b. Go path: fetch audit tool + run it
+      # -----------------------------------------------------------------------
+      - name: Checkout velnor-platform-sdk-go (Go audit tool)
+        if: inputs.repo-type == 'go'
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          repository: VelnorLabs/velnor-platform-sdk-go
+          ref: ${{ inputs.sdk-go-ref }}
+          path: velnor-platform-sdk-go
+          token: ${{ secrets.VELNOR_SDK_READ_TOKEN }}
+
+      - name: Set up Go
+        if: inputs.repo-type == 'go'
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34  # v5.3.0
+        with:
+          go-version-file: velnor-platform-sdk-go/go.mod
+          cache-dependency-path: velnor-platform-sdk-go/go.sum
+
+      - name: Run Go import audit
+        if: inputs.repo-type == 'go'
+        id: go-audit
+        run: |
+          go run ./velnor-platform-sdk-go/tools/import_audit \
+            --root service-repo/${{ inputs.scan-root }}
+        continue-on-error: true
+
+      # -----------------------------------------------------------------------
+      # 3. Post a PR comment on failure (helpful for authors)
+      # -----------------------------------------------------------------------
+      - name: Post PR comment on violations
+        if: >
+          (steps.py-audit.outcome == 'failure' || steps.go-audit.outcome == 'failure') &&
+          github.event_name == 'pull_request'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
+        with:
+          script: |
+            const repoType = '${{ inputs.repo-type }}';
+            const sdkName = repoType === 'py'
+              ? '`velnor_platform_sdk` (Python)'
+              : '`velnor_platform_sdk_go` (Go)';
+            const body = [
+              '## SDK Bypass Check Failed (T-W0-020)',
+              '',
+              `This PR imports AWS, database, or AI provider packages directly instead of routing through ${sdkName}.`,
+              '',
+              '**Why this matters:** Direct provider imports bypass Velnor\'s cross-cutting concerns:',
+              '- Tenant isolation (RLS, schema routing)',
+              '- Cost tripwires and AI-tier circuit breakers',
+              '- Audit logging and PII tokenization',
+              '- OTEL tracing',
+              '',
+              '**How to fix:**',
+              '1. Remove the direct `boto3` / `pgx` / `anthropic` / etc. import.',
+              `2. Use the equivalent abstraction from ${sdkName}.`,
+              '3. If a new capability is needed, open an issue on the SDK repo.',
+              '',
+              '_Enforced by T-W0-020_',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      # -----------------------------------------------------------------------
+      # 4. Final gate — fail the job if either audit found violations
+      # -----------------------------------------------------------------------
+      - name: Fail on Python violations
+        if: steps.py-audit.outcome == 'failure'
+        run: |
+          echo "::error::SDK bypass check (Python) failed — see audit output above."
+          echo "Import AWS / DB / AI access through velnor_platform_sdk instead."
+          exit 1
+
+      - name: Fail on Go violations
+        if: steps.go-audit.outcome == 'failure'
+        run: |
+          echo "::error::SDK bypass check (Go) failed — see audit output above."
+          echo "Import AWS / DB / AI access through velnor_platform_sdk_go instead."
+          exit 1
