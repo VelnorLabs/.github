@@ -64,9 +64,9 @@ on:
 
 env:
   AWS_REGION: ${{ inputs.aws-region }}
-  ECR_REGISTRY: '113831183566.dkr.ecr.us-east-1.amazonaws.com'
-  COSIGN_KMS_KEY: 'awskms:///arn:aws:kms:us-east-1:113831183566:alias/velnor-cosign-signing-v1'
-  GHA_ROLE_ARN: 'arn:aws:iam::113831183566:role/velnor-github-actions'
+  ECR_REGISTRY: '${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com'
+  COSIGN_KMS_KEY: 'awskms:///arn:aws:kms:us-east-1:${{ vars.AWS_ACCOUNT_ID }}:alias/velnor-cosign-signing-v1'
+  GHA_ROLE_ARN: 'arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/velnor-github-actions'
 
 # ---------------------------------------------------------------------------
 # Stage 1: PR checks — lint + unit tests + build + Trivy + SBOM + PII lint
@@ -184,6 +184,7 @@ jobs:
       # SBOM — Syft generates CycloneDX SBOM and attaches it as a workflow artifact
       # -----------------------------------------------------------------------
       - name: Generate SBOM (Syft)
+        if: always()
         uses: anchore/sbom-action@e11c554f704a0b820cbf8c51673f6945e0731532  # v0.17.0
         with:
           image: '${{ inputs.service-name }}:${{ github.sha }}'
