@@ -1,0 +1,25 @@
+# CODEOWNERS template for velnor-schemas
+# Implements Q-2 schema ownership rules (Invariant §5, plan §2.5).
+#
+# Copy this file to velnor-schemas/CODEOWNERS and remove this header comment.
+#
+# Q-2 rules:
+#   openapi/external/*   → @VelnorLabs/pm          (customer-facing contract)
+#   openapi/internal/*   → @VelnorLabs/engineering  (service-to-service contract)
+#   openapi/cross-tier/* → @VelnorLabs/pm + @VelnorLabs/engineering (both)
+#   Everything else      → @VelnorLabs/engineering
+
+# Default
+*                                               @VelnorLabs/engineering
+
+# External (customer-facing) OpenAPI schemas — PM must review
+openapi/external/                               @VelnorLabs/pm
+
+# Internal service-to-service schemas — engineering only
+openapi/internal/                               @VelnorLabs/engineering
+
+# Cross-tier schemas — both PM and engineering must approve
+openapi/cross-tier/                             @VelnorLabs/pm @VelnorLabs/engineering
+
+# Generated API clients — engineering only (auto-generated, never hand-edited)
+src/api/generated/                              @VelnorLabs/engineering

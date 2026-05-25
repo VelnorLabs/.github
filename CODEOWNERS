@@ -1,0 +1,18 @@
+# VelnorLabs org .github CODEOWNERS
+# This file governs the .github org repo (shared workflows, org-level templates).
+#
+# Q-2 ownership rules (Invariant §5, plan §2.5):
+#   external/* OpenAPI schemas  → @VelnorLabs/pm
+#   internal/* OpenAPI schemas  → @VelnorLabs/engineering
+#   cross-tier/* OpenAPI schemas → @VelnorLabs/pm + @VelnorLabs/engineering
+#
+# Org .github shared files default to engineering review.
+
+# Default: all changes require engineering review
+*                                               @VelnorLabs/engineering
+
+# Shared CI/CD workflows — infra-leads must co-approve
+.github/workflows/                              @VelnorLabs/engineering @VelnorLabs/infra-leads
+
+# Security policy
+SECURITY.md                                     @VelnorLabs/engineering @VelnorLabs/infra-leads

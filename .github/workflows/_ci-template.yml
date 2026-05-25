@@ -1,0 +1,222 @@
+# ---------------------------------------------------------------------------
+# VelnorLabs shared CI template · T-W0-010
+#
+# Callable via `workflow_call` so each repo's ci.yml stays ~10 lines.
+# Provides: lint → unit-tests → build → Trivy image scan → OIDC AWS verify
+#
+# Usage in a caller repo (.github/workflows/ci.yml):
+#
+#   jobs:
+#     ci:
+#       uses: VelnorLabs/.github/.github/workflows/_ci-template.yml@main
+#       with:
+#         service_name: velnor-plane-api
+#         image_tag: ${{ github.sha }}
+#       secrets: inherit
+#
+# Invariants enforced:
+#   - Signed commits gate (Invariant §3)
+#   - Pinned action SHAs (Invariant §4)
+#   - OIDC auth — no static AWS keys (T-W0-010 requirement)
+#   - Trivy scan on every build (security-review baseline)
+# ---------------------------------------------------------------------------
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        description: "Name of the velnor service (e.g. velnor-plane-api)"
+        required: true
+        type: string
+      image_tag:
+        description: "Docker image tag (defaults to git SHA)"
+        required: false
+        type: string
+        default: ${{ github.sha }}
+      run_build:
+        description: "Whether to build + push a Docker image"
+        required: false
+        type: boolean
+        default: true
+      aws_region:
+        description: "AWS region for ECR + OIDC"
+        required: false
+        type: string
+        default: "us-east-1"
+      # Role ARN is wired via org-level variable VELNOR_GHA_ROLE_ARN
+      # (set once in GitHub org settings → Variables → Actions)
+    outputs:
+      image_uri:
+        description: "Full ECR URI of the built image (empty if run_build=false)"
+        value: ${{ jobs.build.outputs.image_uri }}
+
+env:
+  AWS_REGION: ${{ inputs.aws_region }}
+  ECR_REGISTRY: ${{ vars.VELNOR_ECR_REGISTRY }}   # set in org variables
+
+# ---------------------------------------------------------------------------
+# Job 1: lint + signed-commit check
+# ---------------------------------------------------------------------------
+jobs:
+  lint:
+    name: Lint + signed-commit check
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        # actions/checkout pinned by SHA — Invariant §4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0    # needed for commit-signature verification
+
+      - name: Verify commits are GPG-signed (Invariant §3)
+        run: |
+          echo "Checking commit signatures on this PR..."
+          git log --format="%H %G?" origin/${{ github.base_ref }}..HEAD | while read sha status; do
+            if [ "$status" != "G" ] && [ "$status" != "U" ]; then
+              echo "ERROR: Commit $sha is not GPG-signed (status=$status)"
+              exit 1
+            fi
+          done
+          echo "All commits are signed."
+
+      # Language-specific lint is injected by the caller via `pre-lint` step
+      # or by adding matrix jobs. Default: run pre-commit if config present.
+      - name: Run pre-commit hooks (if .pre-commit-config.yaml present)
+        run: |
+          if [ -f .pre-commit-config.yaml ]; then
+            pip install --quiet pre-commit
+            pre-commit run --all-files
+          else
+            echo "No .pre-commit-config.yaml found — skipping."
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Job 2: unit tests
+  # ---------------------------------------------------------------------------
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-24.04
+    needs: lint
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      # Callers override this step by creating `.github/ci-test.sh`
+      - name: Run tests
+        run: |
+          if [ -f .github/ci-test.sh ]; then
+            bash .github/ci-test.sh
+          elif [ -f Makefile ] && grep -q "^test:" Makefile; then
+            make test
+          else
+            echo "No test runner found (.github/ci-test.sh or make test). Add one."
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Job 3: build Docker image + push to ECR + Trivy scan
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build, scan, push
+    runs-on: ubuntu-24.04
+    needs: unit-tests
+    if: inputs.run_build == true
+    permissions:
+      contents: read
+      id-token: write   # required for OIDC token
+    outputs:
+      image_uri: ${{ steps.image-meta.outputs.image_uri }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      # -----------------------------------------------------------------------
+      # OIDC: assume velnor-github-actions role — no static keys
+      # Role ARN stored as org-level Actions variable VELNOR_GHA_ROLE_ARN
+      # -----------------------------------------------------------------------
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502  # v4.0.2
+        with:
+          role-to-assume: ${{ vars.VELNOR_GHA_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-${{ inputs.service_name }}-${{ github.run_id }}
+
+      # Smoke-test: confirm we're in the right account
+      - name: Verify AWS identity (OIDC smoke test)
+        run: aws sts get-caller-identity
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076  # v2.0.1
+
+      - name: Compute image URI
+        id: image-meta
+        run: |
+          IMAGE_URI="${{ env.ECR_REGISTRY }}/${{ inputs.service_name }}:${{ inputs.image_tag }}"
+          echo "image_uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+          echo "Building image: $IMAGE_URI"
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --label "org.opencontainers.image.revision=${{ github.sha }}" \
+            --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
+            -t "${{ steps.image-meta.outputs.image_uri }}" \
+            .
+
+      # Trivy image scan — fail on CRITICAL/HIGH (Invariant §4)
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8  # v0.24.0
+        with:
+          image-ref: ${{ steps.image-meta.outputs.image_uri }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Upload Trivy results to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@dd746615b3d6f9e9c5c7e42ca06c5d6e982a9b38  # v3.27.5
+        with:
+          sarif_file: trivy-results.sarif
+
+      - name: Push image to ECR
+        run: docker push "${{ steps.image-meta.outputs.image_uri }}"
+
+      # cosign sign — Invariant §3 (signed images)
+      - name: Install cosign
+        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da  # v3.7.0
+
+      - name: Sign image with cosign (keyless via OIDC)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign sign --yes "${{ steps.image-meta.outputs.image_uri }}"
+
+  # ---------------------------------------------------------------------------
+  # Job 4: verify OIDC S3 access (smoke test per AC in T-W0-010)
+  # Runs only on pushes to main.
+  # ---------------------------------------------------------------------------
+  oidc-smoke-test:
+    name: OIDC S3 ls smoke test
+    runs-on: ubuntu-24.04
+    needs: build
+    if: github.ref == 'refs/heads/main' && inputs.run_build == true
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502  # v4.0.2
+        with:
+          role-to-assume: ${{ vars.VELNOR_GHA_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: oidc-smoke-${{ inputs.service_name }}-${{ github.run_id }}
+
+      - name: S3 ls smoke test (TF state bucket)
+        run: aws s3 ls s3://velnor-dev-tfstate-bootstrap/ --region us-east-1

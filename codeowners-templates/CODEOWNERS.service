@@ -1,0 +1,22 @@
+# CODEOWNERS template for velnor service repos
+# (velnor-plane-api, velnor-chat-api, velnor-agent-gateway, etc.)
+#
+# Copy to <repo>/CODEOWNERS and replace <service-team> with the owning team.
+# Remove this header comment.
+
+# Default: all changes require engineering review
+*                                               @VelnorLabs/engineering
+
+# Service-specific ownership — replace with actual team
+src/                                            @VelnorLabs/engineering
+
+# CI/CD config — infra-leads co-approve
+.github/workflows/                              @VelnorLabs/engineering @VelnorLabs/infra-leads
+Dockerfile                                      @VelnorLabs/engineering @VelnorLabs/infra-leads
+docker-compose*.yml                             @VelnorLabs/engineering @VelnorLabs/infra-leads
+
+# Database migrations — require two engineering reviews (high blast radius)
+migrations/                                     @VelnorLabs/engineering @VelnorLabs/infra-leads
+
+# Security-sensitive files
+SECURITY.md                                     @VelnorLabs/engineering @VelnorLabs/infra-leads
