@@ -1,0 +1,188 @@
+# ---------------------------------------------------------------------------
+# _schema-sla-watch.yml · T-W1-018
+#
+# Watches open schema PRs in velnor-schemas for reviewer SLA breaches.
+#
+# SLA rules (Q-2 / §2.5):
+#   - 20h elapsed → warning comment on PR (approaching 24h SLA)
+#   - 24h elapsed → ping founder via PR comment + issue label "sla-breached"
+#
+# Schedule: runs every 2 hours (cron).
+# Can also be triggered manually via workflow_dispatch.
+#
+# Required org-level secrets / variables:
+#   VELNOR_SCHEMAS_READ_TOKEN   — read-only PAT for velnor-schemas
+#   VELNOR_FOUNDER_GITHUB_LOGIN — GitHub login of the founder to ping (e.g. vsusheel)
+#
+# Invariants:
+#   - Pinned action SHAs (Invariant §4)
+# ---------------------------------------------------------------------------
+
+on:
+  schedule:
+    # Every 2 hours
+    - cron: "0 */2 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run — log actions but do not post comments"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  schema-sla-watch:
+    name: Schema PR SLA watch (24h)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check schema PR SLA status
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
+        env:
+          SCHEMAS_TOKEN: ${{ secrets.VELNOR_SCHEMAS_READ_TOKEN }}
+          FOUNDER_LOGIN: ${{ vars.VELNOR_FOUNDER_GITHUB_LOGIN }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        with:
+          # Use a dedicated token for cross-repo PR access
+          github-token: ${{ secrets.VELNOR_SCHEMAS_READ_TOKEN }}
+          script: |
+            const ORG   = 'VelnorLabs';
+            const REPO  = 'velnor-schemas';
+            const WARN_HOURS  = 20;
+            const BREACH_HOURS = 24;
+            const DRY_RUN = process.env.DRY_RUN === 'true';
+            const FOUNDER = process.env.FOUNDER_LOGIN || 'vsusheel';
+
+            const now = Date.now();
+
+            // Fetch all open PRs in velnor-schemas
+            const prs = await github.paginate(github.rest.pulls.list, {
+              owner: ORG,
+              repo:  REPO,
+              state: 'open',
+              per_page: 100,
+            });
+
+            core.info(`Found ${prs.length} open PR(s) in ${ORG}/${REPO}`);
+
+            for (const pr of prs) {
+              const createdAt   = new Date(pr.created_at).getTime();
+              const ageMs       = now - createdAt;
+              const ageHours    = ageMs / (1000 * 60 * 60);
+              const prRef       = `#${pr.number} "${pr.title}"`;
+
+              core.info(`PR ${prRef}: age=${ageHours.toFixed(1)}h`);
+
+              // ----------------------------------------------------------------
+              // Skip if the PR already has an approval (SLA satisfied)
+              // ----------------------------------------------------------------
+              const reviews = await github.rest.pulls.listReviews({
+                owner: ORG,
+                repo:  REPO,
+                pull_number: pr.number,
+              });
+              const approved = reviews.data.some(r => r.state === 'APPROVED');
+              if (approved) {
+                core.info(`  → already approved, skipping`);
+                continue;
+              }
+
+              // ----------------------------------------------------------------
+              // Fetch existing comments to avoid duplicate pings
+              // ----------------------------------------------------------------
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner: ORG,
+                repo:  REPO,
+                issue_number: pr.number,
+                per_page: 100,
+              });
+              const botComments = comments.filter(c =>
+                c.user.type === 'Bot' &&
+                c.body.includes('<!-- velnor-sla-watch -->')
+              );
+              const alreadyBreachPinged = botComments.some(c => c.body.includes('SLA_BREACH'));
+              const alreadyWarnPinged   = botComments.some(c => c.body.includes('SLA_WARNING'));
+
+              // ----------------------------------------------------------------
+              // 24h BREACH
+              // ----------------------------------------------------------------
+              if (ageHours >= BREACH_HOURS && !alreadyBreachPinged) {
+                const body = [
+                  '<!-- velnor-sla-watch SLA_BREACH -->',
+                  `## 🔴 Schema Review SLA Breached`,
+                  '',
+                  `This PR has been open for **${ageHours.toFixed(1)} hours** without an approving review, exceeding the **24h SLA** required for schema changes (Q-2).`,
+                  '',
+                  `@${FOUNDER} — immediate attention required.`,
+                  '',
+                  '**Required reviewer by CODEOWNERS path:**',
+                  '- `openapi/external/*` → @VelnorLabs/pm',
+                  '- `openapi/internal/*` → @VelnorLabs/engineering',
+                  '- `openapi/cross-tier/*` → @VelnorLabs/pm + @VelnorLabs/engineering',
+                  '',
+                  '_Enforced by T-W1-018 / Q-2 · velnor-sla-watch_',
+                ].join('\n');
+
+                if (DRY_RUN) {
+                  core.warning(`[DRY RUN] Would post SLA breach comment on PR ${prRef}`);
+                } else {
+                  await github.rest.issues.createComment({
+                    owner: ORG,
+                    repo:  REPO,
+                    issue_number: pr.number,
+                    body,
+                  });
+                  // Label the PR so it shows in triage dashboards
+                  try {
+                    await github.rest.issues.addLabels({
+                      owner: ORG,
+                      repo:  REPO,
+                      issue_number: pr.number,
+                      labels: ['sla-breached'],
+                    });
+                  } catch (labelErr) {
+                    core.warning(`Could not add label (label may not exist yet): ${labelErr.message}`);
+                  }
+                  core.error(`SLA BREACH on PR ${prRef} (${ageHours.toFixed(1)}h)`);
+                }
+                continue;
+              }
+
+              // ----------------------------------------------------------------
+              // 20h WARNING (approaching 24h)
+              // ----------------------------------------------------------------
+              if (ageHours >= WARN_HOURS && !alreadyWarnPinged && !alreadyBreachPinged) {
+                const remaining = (BREACH_HOURS - ageHours).toFixed(1);
+                const body = [
+                  '<!-- velnor-sla-watch SLA_WARNING -->',
+                  `## ⚠️ Schema Review SLA Approaching`,
+                  '',
+                  `This PR has been open for **${ageHours.toFixed(1)} hours**. The 24h review SLA (Q-2) will be breached in approximately **${remaining} hours**.`,
+                  '',
+                  'Please assign a reviewer now.',
+                  '',
+                  '**Required reviewer by CODEOWNERS path:**',
+                  '- `openapi/external/*` → @VelnorLabs/pm',
+                  '- `openapi/internal/*` → @VelnorLabs/engineering',
+                  '- `openapi/cross-tier/*` → @VelnorLabs/pm + @VelnorLabs/engineering',
+                  '',
+                  '_Enforced by T-W1-018 / Q-2 · velnor-sla-watch_',
+                ].join('\n');
+
+                if (DRY_RUN) {
+                  core.warning(`[DRY RUN] Would post SLA warning comment on PR ${prRef}`);
+                } else {
+                  await github.rest.issues.createComment({
+                    owner: ORG,
+                    repo:  REPO,
+                    issue_number: pr.number,
+                    body,
+                  });
+                  core.warning(`SLA WARNING on PR ${prRef} (${ageHours.toFixed(1)}h, ${remaining}h remaining)`);
+                }
+              }
+            }
+
+            core.info('SLA watch run complete.');

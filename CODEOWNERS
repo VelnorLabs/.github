@@ -16,3 +16,17 @@
 
 # Security policy
 SECURITY.md                                     @VelnorLabs/engineering @VelnorLabs/infra-leads
+
+# ---------------------------------------------------------------------------
+# Schema tier gates (Q-2 / T-W1-018)
+# These patterns apply when velnor-schemas CODEOWNERS is stamped from the
+# codeowners-templates/CODEOWNERS.schemas template.  They are mirrored here
+# so the .github org repo itself enforces the same rules on template changes.
+# ---------------------------------------------------------------------------
+
+# External (customer-facing) OpenAPI schemas — PM must review (24h SLA)
+codeowners-templates/CODEOWNERS.schemas         @VelnorLabs/pm @VelnorLabs/engineering
+
+# Schema bypass-check and SLA-watch workflows — infra-leads + PM gate
+.github/workflows/_schema-bypass-check.yml      @VelnorLabs/engineering @VelnorLabs/infra-leads @VelnorLabs/pm
+.github/workflows/_schema-sla-watch.yml         @VelnorLabs/engineering @VelnorLabs/infra-leads @VelnorLabs/pm

@@ -1,0 +1,213 @@
+# ---------------------------------------------------------------------------
+# _schema-bypass-check.yml · T-W1-018
+#
+# Blocks any service-repo top-level type definition that shadows a name
+# already exported from velnor-schemas generated types (Q-2 / §2.5).
+#
+# Called via workflow_call from service-repo CI pipelines:
+#
+#   jobs:
+#     schema-check:
+#       uses: VelnorLabs/.github/.github/workflows/_schema-bypass-check.yml@main
+#       secrets: inherit
+#
+# The check:
+#   1. Clones velnor-schemas@main to extract the canonical name list.
+#   2. Scans the calling repo's source tree for top-level type definitions
+#      (TypeScript, Python, Go) that match any canonical name.
+#   3. Fails with a clear error if any shadow is found.
+#
+# Invariants:
+#   - Pinned action SHAs (Invariant §4)
+#   - No static AWS keys (OIDC not needed — read-only public repos)
+# ---------------------------------------------------------------------------
+
+on:
+  workflow_call:
+    inputs:
+      scan_paths:
+        description: "Space-separated list of paths to scan (default: src)"
+        required: false
+        type: string
+        default: "src"
+      schemas_ref:
+        description: "velnor-schemas git ref to use for canonical name list"
+        required: false
+        type: string
+        default: "main"
+
+jobs:
+  schema-bypass-check:
+    name: Schema bypass check (Q-2)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write   # needed to post a PR comment on failure
+
+    steps:
+      - name: Checkout service repo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          path: service-repo
+
+      - name: Checkout velnor-schemas (canonical name source)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          repository: VelnorLabs/velnor-schemas
+          ref: ${{ inputs.schemas_ref }}
+          path: velnor-schemas
+          token: ${{ secrets.VELNOR_SCHEMAS_READ_TOKEN }}
+
+      # -----------------------------------------------------------------------
+      # Build the canonical type-name list from generated artefacts.
+      # Sources:
+      #   TypeScript: generated/ts/types/*.d.ts  → export (type|interface|class)
+      #   Go:         generated/go/*.gen.go       → ^type <Name>
+      #   Python:     generated/py/**/__init__.py → ^class <Name>
+      # -----------------------------------------------------------------------
+      - name: Extract canonical schema names
+        id: extract-names
+        run: |
+          set -euo pipefail
+          NAMES_FILE="$(mktemp)"
+
+          echo "--- Extracting TypeScript names ---"
+          grep -rh \
+            -E "^export (type|interface|class) [A-Z][A-Za-z0-9_]+" \
+            velnor-schemas/generated/ts/types/ 2>/dev/null \
+            | sed -E "s/^export (type|interface|class) ([A-Z][A-Za-z0-9_]+).*/\2/" \
+            >> "$NAMES_FILE" || true
+
+          echo "--- Extracting Go names ---"
+          grep -rh \
+            -E "^type [A-Z][A-Za-z0-9_]+" \
+            velnor-schemas/generated/go/ 2>/dev/null \
+            | sed -E "s/^type ([A-Z][A-Za-z0-9_]+).*/\1/" \
+            >> "$NAMES_FILE" || true
+
+          echo "--- Extracting Python names ---"
+          grep -rh \
+            -E "^class [A-Z][A-Za-z0-9_]+[:(]" \
+            velnor-schemas/generated/py/ 2>/dev/null \
+            | sed -E "s/^class ([A-Z][A-Za-z0-9_]+).*/\1/" \
+            >> "$NAMES_FILE" || true
+
+          # Deduplicate
+          sort -u "$NAMES_FILE" > canonical-names.txt
+          COUNT=$(wc -l < canonical-names.txt)
+          echo "Canonical schema names extracted: $COUNT"
+          cat canonical-names.txt
+          echo "names_file=canonical-names.txt" >> "$GITHUB_OUTPUT"
+          echo "names_count=$COUNT" >> "$GITHUB_OUTPUT"
+
+      # -----------------------------------------------------------------------
+      # Scan service repo source for shadowing definitions.
+      # We look for top-level type/interface/class/struct declarations whose
+      # name appears in the canonical list.
+      # Excluded paths: generated/, vendor/, node_modules/, __pycache__/
+      # -----------------------------------------------------------------------
+      - name: Scan service repo for schema name shadows
+        id: scan
+        run: |
+          set -euo pipefail
+
+          VIOLATIONS_FILE="$(mktemp)"
+          SCAN_PATHS="${{ inputs.scan_paths }}"
+
+          echo "Scanning paths: $SCAN_PATHS"
+          echo "Canonical names to check: $(wc -l < canonical-names.txt)"
+
+          while IFS= read -r CANONICAL_NAME; do
+            [ -z "$CANONICAL_NAME" ] && continue
+
+            # TypeScript / JavaScript: export type|interface|class <Name>
+            RESULTS=$(grep -rn \
+              --include="*.ts" --include="*.tsx" --include="*.js" \
+              --exclude-dir="generated" --exclude-dir="node_modules" --exclude-dir=".next" \
+              -E "(^|export )(type|interface|class) ${CANONICAL_NAME}(\s|<|\{|$)" \
+              service-repo/$SCAN_PATHS 2>/dev/null || true)
+            if [ -n "$RESULTS" ]; then
+              while IFS= read -r line; do
+                echo "SHADOW [TypeScript] ${CANONICAL_NAME}: $line" >> "$VIOLATIONS_FILE"
+              done <<< "$RESULTS"
+            fi
+
+            # Python: class <Name>
+            RESULTS=$(grep -rn \
+              --include="*.py" \
+              --exclude-dir="__pycache__" --exclude-dir="generated" \
+              -E "^class ${CANONICAL_NAME}[:(]" \
+              service-repo/$SCAN_PATHS 2>/dev/null || true)
+            if [ -n "$RESULTS" ]; then
+              while IFS= read -r line; do
+                echo "SHADOW [Python] ${CANONICAL_NAME}: $line" >> "$VIOLATIONS_FILE"
+              done <<< "$RESULTS"
+            fi
+
+            # Go: type <Name> struct|interface|string|int
+            RESULTS=$(grep -rn \
+              --include="*.go" \
+              --exclude-dir="generated" --exclude-dir="vendor" \
+              -E "^type ${CANONICAL_NAME} " \
+              service-repo/$SCAN_PATHS 2>/dev/null || true)
+            if [ -n "$RESULTS" ]; then
+              while IFS= read -r line; do
+                echo "SHADOW [Go] ${CANONICAL_NAME}: $line" >> "$VIOLATIONS_FILE"
+              done <<< "$RESULTS"
+            fi
+
+          done < canonical-names.txt
+
+          VIOLATION_COUNT=$(wc -l < "$VIOLATIONS_FILE" | tr -d ' ')
+          echo "violations_count=$VIOLATION_COUNT" >> "$GITHUB_OUTPUT"
+          echo "violations_file=$VIOLATIONS_FILE" >> "$GITHUB_OUTPUT"
+
+          if [ "$VIOLATION_COUNT" -gt 0 ]; then
+            echo "--- VIOLATIONS FOUND ---"
+            cat "$VIOLATIONS_FILE"
+          else
+            echo "No schema name shadows found."
+          fi
+
+      # -----------------------------------------------------------------------
+      # Post a PR comment with violation details (helpful for authors)
+      # -----------------------------------------------------------------------
+      - name: Post PR comment on violations
+        if: steps.scan.outputs.violations_count != '0' && github.event_name == 'pull_request'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
+        with:
+          script: |
+            const count = '${{ steps.scan.outputs.violations_count }}';
+            const body = [
+              '## ❌ Schema Bypass Check Failed (Q-2)',
+              '',
+              `Found **${count}** type definition(s) in this service repo that shadow a canonical name from \`velnor-schemas\`.`,
+              '',
+              '**Why this matters:** Duplicate type definitions cause drift between service contracts and the shared schema registry, breaking generated SDK guarantees.',
+              '',
+              '**How to fix:**',
+              '1. Remove the local type definition from this repo.',
+              '2. Import the canonical type from `@velnor/schemas` (TypeScript), `velnor-schemas` (Python), or `velnor-schemas/generated/go` (Go).',
+              '3. If you need a local extension, wrap/embed the canonical type — do not redefine it.',
+              '',
+              'See `velnor-schemas` CODEOWNERS to request a schema addition if the type belongs in the registry.',
+              '',
+              '_Enforced by T-W1-018 / Q-2_',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      # -----------------------------------------------------------------------
+      # Final gate — fail the job if violations exist
+      # -----------------------------------------------------------------------
+      - name: Fail on violations
+        if: steps.scan.outputs.violations_count != '0'
+        run: |
+          echo "::error::Schema bypass check failed: ${{ steps.scan.outputs.violations_count }} violation(s) found."
+          echo "Import canonical types from velnor-schemas instead of redefining them."
+          exit 1
