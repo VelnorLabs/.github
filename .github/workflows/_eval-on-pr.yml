@@ -1,0 +1,123 @@
+# ---------------------------------------------------------------------------
+# VelnorLabs shared eval-on-PR workflow · T-W0-011
+#
+# Callable via `workflow_call`. Checks whether any changed paths touch AI
+# Harness or eval directories; if so, runs the eval subset. Otherwise skips.
+#
+# Real eval execution is deferred to T-W4-xxx. This workflow contains a
+# stub that will be replaced with actual harness invocation in that task.
+#
+# Usage in a caller repo (.github/workflows/ci.yml):
+#
+#   jobs:
+#     eval:
+#       uses: VelnorLabs/.github/.github/workflows/_eval-on-pr.yml@main
+#       with:
+#         changed-paths: ${{ toJson(steps.changed.outputs.paths) }}
+#
+# Invariants enforced:
+#   - Pinned action SHAs (Invariant §4)
+#   - No static AWS keys (eval subset is read-only; OIDC not needed here)
+# ---------------------------------------------------------------------------
+
+on:
+  workflow_call:
+    inputs:
+      changed-paths:
+        description: 'JSON list of changed file paths (e.g. from tj-actions/changed-files)'
+        required: true
+        type: string
+      eval-timeout-minutes:
+        description: 'Maximum minutes to allow the eval subset to run'
+        required: false
+        type: number
+        default: 15
+
+jobs:
+  eval-on-pr:
+    name: Eval subset (AI Harness paths)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    timeout-minutes: ${{ fromJson(inputs.eval-timeout-minutes) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      # -----------------------------------------------------------------------
+      # Determine whether any changed path is under harness/ or evals/
+      # Uses a pure-bash approach to avoid adding a node action dependency.
+      # -----------------------------------------------------------------------
+      - name: Check for AI Harness / eval path changes
+        id: path-check
+        run: |
+          set -euo pipefail
+
+          CHANGED_PATHS='${{ inputs.changed-paths }}'
+          echo "Changed paths JSON: $CHANGED_PATHS"
+
+          # Parse the JSON list with python3 (available on ubuntu-24.04 runners)
+          HARNESS_CHANGED=$(python3 - <<'PYEOF'
+          import json, sys, re
+
+          raw = '''${{ inputs.changed-paths }}'''
+          try:
+              paths = json.loads(raw)
+          except json.JSONDecodeError:
+              # Fallback: treat as newline-separated list
+              paths = [p.strip() for p in raw.strip().splitlines() if p.strip()]
+
+          # Match any path containing /harness/ or /evals/ (or starting with them)
+          pattern = re.compile(r'(^|/)harness/|(^|/)evals/')
+          matched = [p for p in paths if pattern.search(p)]
+
+          if matched:
+              print("true")
+              for p in matched:
+                  print(f"  matched: {p}", file=sys.stderr)
+          else:
+              print("false")
+          PYEOF
+          )
+
+          echo "harness-changed=$HARNESS_CHANGED" >> "$GITHUB_OUTPUT"
+          echo "Harness/eval paths changed: $HARNESS_CHANGED"
+
+      # -----------------------------------------------------------------------
+      # Skip message when no AI Harness paths changed
+      # -----------------------------------------------------------------------
+      - name: Skip eval (no AI Harness paths changed)
+        if: steps.path-check.outputs.harness-changed == 'false'
+        run: |
+          echo "No AI Harness paths changed, skipping eval"
+          echo "Paths that would trigger eval: **/harness/**, **/evals/**"
+
+      # -----------------------------------------------------------------------
+      # Run eval subset when AI Harness paths are detected
+      # STUB — real eval invocation deferred to T-W4-xxx
+      # -----------------------------------------------------------------------
+      - name: Run eval subset (stub)
+        if: steps.path-check.outputs.harness-changed == 'true'
+        run: |
+          echo "Running eval subset"
+          echo "----------------------------------------"
+          echo "STUB: AI Harness / eval paths detected."
+          echo "Real eval execution will be wired in T-W4-xxx."
+          echo "Affected paths:"
+          python3 - <<'PYEOF'
+          import json, re
+
+          raw = '''${{ inputs.changed-paths }}'''
+          try:
+              paths = json.loads(raw)
+          except json.JSONDecodeError:
+              paths = [p.strip() for p in raw.strip().splitlines() if p.strip()]
+
+          pattern = re.compile(r'(^|/)harness/|(^|/)evals/')
+          for p in paths:
+              if pattern.search(p):
+                  print(f"  -> {p}")
+          PYEOF
+          echo "----------------------------------------"
+          echo "Eval subset completed (stub — exit 0)."

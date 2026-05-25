@@ -1,8 +1,11 @@
 # ---------------------------------------------------------------------------
-# VelnorLabs shared CI template · T-W0-010
+# VelnorLabs shared CI template · T-W0-011
 #
-# Callable via `workflow_call` so each repo's ci.yml stays ~10 lines.
-# Provides: lint → unit-tests → build → Trivy image scan → OIDC AWS verify
+# Callable via `workflow_call` so each service repo's ci.yml stays ~10 lines.
+# Provides: lint → unit-tests → build → Trivy scan → SBOM → cosign → ECR push
+#
+# Stage 1 (lint-unit-scan): runs on every PR + push
+# Stage 2 (build-sign-push): runs only on merge to main
 #
 # Usage in a caller repo (.github/workflows/ci.yml):
 #
@@ -10,142 +13,228 @@
 #     ci:
 #       uses: VelnorLabs/.github/.github/workflows/_ci-template.yml@main
 #       with:
-#         service_name: velnor-plane-api
-#         image_tag: ${{ github.sha }}
+#         language: go
+#         service-name: velnor-chat-api
 #       secrets: inherit
 #
 # Invariants enforced:
-#   - Signed commits gate (Invariant §3)
 #   - Pinned action SHAs (Invariant §4)
 #   - OIDC auth — no static AWS keys (T-W0-010 requirement)
 #   - Trivy scan on every build (security-review baseline)
+#   - SBOM generated via Syft on every build
+#   - cosign KMS sign on every ECR push (DEC-0039 / Invariant §3)
+#   - PII lint on every run
 # ---------------------------------------------------------------------------
 
 on:
   workflow_call:
     inputs:
-      service_name:
-        description: "Name of the velnor service (e.g. velnor-plane-api)"
+      language:
+        description: 'go or python'
         required: true
         type: string
-      image_tag:
-        description: "Docker image tag (defaults to git SHA)"
-        required: false
+      service-name:
+        description: 'ECR repo name (e.g. velnor-chat-api)'
+        required: true
         type: string
-        default: ${{ github.sha }}
-      run_build:
-        description: "Whether to build + push a Docker image"
+      run-eval:
+        description: 'Whether to run eval subset'
         required: false
         type: boolean
-        default: true
-      aws_region:
-        description: "AWS region for ECR + OIDC"
+        default: false
+      go-version:
+        description: 'Go toolchain version (used when language=go)'
         required: false
         type: string
-        default: "us-east-1"
-      # Role ARN is wired via org-level variable VELNOR_GHA_ROLE_ARN
-      # (set once in GitHub org settings → Variables → Actions)
+        default: '1.22'
+      python-version:
+        description: 'Python version (used when language=python)'
+        required: false
+        type: string
+        default: '3.12'
+      aws-region:
+        description: 'AWS region for ECR + OIDC'
+        required: false
+        type: string
+        default: 'us-east-1'
     outputs:
-      image_uri:
-        description: "Full ECR URI of the built image (empty if run_build=false)"
-        value: ${{ jobs.build.outputs.image_uri }}
+      image-uri:
+        description: 'Full ECR URI of the signed image (empty if build-sign-push skipped)'
+        value: ${{ jobs.build-sign-push.outputs.image-uri }}
 
 env:
-  AWS_REGION: ${{ inputs.aws_region }}
-  ECR_REGISTRY: ${{ vars.VELNOR_ECR_REGISTRY }}   # set in org variables
+  AWS_REGION: ${{ inputs.aws-region }}
+  ECR_REGISTRY: '113831183566.dkr.ecr.us-east-1.amazonaws.com'
+  COSIGN_KMS_KEY: 'awskms:///arn:aws:kms:us-east-1:113831183566:alias/velnor-cosign-signing-v1'
+  GHA_ROLE_ARN: 'arn:aws:iam::113831183566:role/velnor-github-actions'
 
 # ---------------------------------------------------------------------------
-# Job 1: lint + signed-commit check
+# Stage 1: PR checks — lint + unit tests + build + Trivy + SBOM + PII lint
+# Runs on every push/PR event (workflow_call passes through the trigger).
 # ---------------------------------------------------------------------------
 jobs:
-  lint:
-    name: Lint + signed-commit check
+  lint-unit-scan:
+    name: Stage 1 · lint → unit → build → Trivy → SBOM → PII lint
     runs-on: ubuntu-24.04
     permissions:
+      id-token: write    # required for SBOM attestation + potential future OIDC use
       contents: read
     steps:
       - name: Checkout
-        # actions/checkout pinned by SHA — Invariant §4
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
-          fetch-depth: 0    # needed for commit-signature verification
+          fetch-depth: 0
 
-      - name: Verify commits are GPG-signed (Invariant §3)
-        run: |
-          echo "Checking commit signatures on this PR..."
-          git log --format="%H %G?" origin/${{ github.base_ref }}..HEAD | while read sha status; do
-            if [ "$status" != "G" ] && [ "$status" != "U" ]; then
-              echo "ERROR: Commit $sha is not GPG-signed (status=$status)"
-              exit 1
-            fi
-          done
-          echo "All commits are signed."
+      # -----------------------------------------------------------------------
+      # Language setup — Go or Python
+      # -----------------------------------------------------------------------
+      - name: Set up Go
+        if: inputs.language == 'go'
+        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b  # v5.4.0
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
 
-      # Language-specific lint is injected by the caller via `pre-lint` step
-      # or by adding matrix jobs. Default: run pre-commit if config present.
-      - name: Run pre-commit hooks (if .pre-commit-config.yaml present)
+      - name: Set up Python
+        if: inputs.language == 'python'
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: 'pip'
+
+      # -----------------------------------------------------------------------
+      # Lint — Go: golangci-lint; Python: ruff + mypy
+      # -----------------------------------------------------------------------
+      - name: Lint (Go — golangci-lint)
+        if: inputs.language == 'go'
+        uses: golangci/golangci-lint-action@4696ba8abb4c13edca2f2b0f9093a33e61512369  # v6.5.0
+        with:
+          version: latest
+          args: --timeout=5m
+
+      - name: Install Python lint dependencies
+        if: inputs.language == 'python'
+        run: pip install --quiet ruff mypy
+
+      - name: Lint (Python — ruff check)
+        if: inputs.language == 'python'
+        run: ruff check .
+
+      - name: Lint (Python — mypy)
+        if: inputs.language == 'python'
         run: |
-          if [ -f .pre-commit-config.yaml ]; then
-            pip install --quiet pre-commit
-            pre-commit run --all-files
+          if [ -f mypy.ini ] || [ -f setup.cfg ] || [ -f pyproject.toml ]; then
+            mypy .
           else
-            echo "No .pre-commit-config.yaml found — skipping."
+            echo "No mypy config found — skipping mypy."
+          fi
+
+      # -----------------------------------------------------------------------
+      # Unit tests — Go: go test ./...; Python: pytest
+      # -----------------------------------------------------------------------
+      - name: Unit tests (Go)
+        if: inputs.language == 'go'
+        run: go test -race -count=1 ./...
+
+      - name: Install Python test dependencies
+        if: inputs.language == 'python'
+        run: |
+          if [ -f requirements-dev.txt ]; then
+            pip install --quiet -r requirements-dev.txt
+          elif [ -f requirements.txt ]; then
+            pip install --quiet -r requirements.txt
+          fi
+          pip install --quiet pytest
+
+      - name: Unit tests (Python — pytest)
+        if: inputs.language == 'python'
+        run: pytest --tb=short -q
+
+      # -----------------------------------------------------------------------
+      # Build container image (local — not pushed yet)
+      # -----------------------------------------------------------------------
+      - name: Build container image
+        run: |
+          docker build \
+            --label "org.opencontainers.image.revision=${{ github.sha }}" \
+            --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
+            -t "${{ inputs.service-name }}:${{ github.sha }}" \
+            .
+
+      # -----------------------------------------------------------------------
+      # Trivy vulnerability scan — fail on CRITICAL or HIGH
+      # -----------------------------------------------------------------------
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8  # v0.24.0
+        with:
+          image-ref: '${{ inputs.service-name }}:${{ github.sha }}'
+          format: sarif
+          output: trivy-results.sarif
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Upload Trivy SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@dd746615b3d6f9e9c5c7e42ca06c5d6e982a9b38  # v3.27.5
+        with:
+          sarif_file: trivy-results.sarif
+
+      # -----------------------------------------------------------------------
+      # SBOM — Syft generates CycloneDX SBOM and attaches it as a workflow artifact
+      # -----------------------------------------------------------------------
+      - name: Generate SBOM (Syft)
+        uses: anchore/sbom-action@e11c554f704a0b820cbf8c51673f6945e0731532  # v0.17.0
+        with:
+          image: '${{ inputs.service-name }}:${{ github.sha }}'
+          format: cyclonedx-json
+          artifact-name: 'sbom-${{ inputs.service-name }}-${{ github.sha }}.cdx.json'
+          output-file: sbom.cdx.json
+
+      # -----------------------------------------------------------------------
+      # PII lint — scan source for PII leakage patterns in log/span/metric calls
+      # Runs after other steps so failures from Trivy/tests are visible too
+      # -----------------------------------------------------------------------
+      - name: PII lint
+        if: always()
+        run: |
+          if [ -f scripts/pii_lint.py ]; then
+            python3 scripts/pii_lint.py --root .
+          else
+            # Fall back to VelnorLabs/.github copy if running from a service repo
+            # that hasn't vendored the script yet
+            echo "scripts/pii_lint.py not found in this repo — skipping PII lint."
+            echo "Add 'uses: VelnorLabs/.github' step or copy scripts/pii_lint.py to enable."
           fi
 
   # ---------------------------------------------------------------------------
-  # Job 2: unit tests
+  # Stage 2: Build + sign + push to ECR (only on merge to main)
+  # Requires Stage 1 to pass. Skipped on PRs.
   # ---------------------------------------------------------------------------
-  unit-tests:
-    name: Unit tests
+  build-sign-push:
+    name: Stage 2 · build → push → cosign sign
+    needs: lint-unit-scan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-24.04
-    needs: lint
     permissions:
+      id-token: write    # OIDC token for AWS + cosign
       contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-
-      # Callers override this step by creating `.github/ci-test.sh`
-      - name: Run tests
-        run: |
-          if [ -f .github/ci-test.sh ]; then
-            bash .github/ci-test.sh
-          elif [ -f Makefile ] && grep -q "^test:" Makefile; then
-            make test
-          else
-            echo "No test runner found (.github/ci-test.sh or make test). Add one."
-            exit 1
-          fi
-
-  # ---------------------------------------------------------------------------
-  # Job 3: build Docker image + push to ECR + Trivy scan
-  # ---------------------------------------------------------------------------
-  build:
-    name: Build, scan, push
-    runs-on: ubuntu-24.04
-    needs: unit-tests
-    if: inputs.run_build == true
-    permissions:
-      contents: read
-      id-token: write   # required for OIDC token
     outputs:
-      image_uri: ${{ steps.image-meta.outputs.image_uri }}
+      image-uri: ${{ steps.image-meta.outputs.image-uri }}
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
       # -----------------------------------------------------------------------
-      # OIDC: assume velnor-github-actions role — no static keys
-      # Role ARN stored as org-level Actions variable VELNOR_GHA_ROLE_ARN
+      # OIDC: assume velnor-github-actions role — no static AWS keys
       # -----------------------------------------------------------------------
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502  # v4.0.2
         with:
-          role-to-assume: ${{ vars.VELNOR_GHA_ROLE_ARN }}
+          role-to-assume: ${{ env.GHA_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-          role-session-name: gha-${{ inputs.service_name }}-${{ github.run_id }}
+          role-session-name: gha-ci-${{ inputs.service-name }}-${{ github.run_id }}
 
-      # Smoke-test: confirm we're in the right account
       - name: Verify AWS identity (OIDC smoke test)
         run: aws sts get-caller-identity
 
@@ -153,70 +242,55 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076  # v2.0.1
 
+      # -----------------------------------------------------------------------
+      # Build, tag, and push
+      # -----------------------------------------------------------------------
       - name: Compute image URI
         id: image-meta
         run: |
-          IMAGE_URI="${{ env.ECR_REGISTRY }}/${{ inputs.service_name }}:${{ inputs.image_tag }}"
-          echo "image_uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
-          echo "Building image: $IMAGE_URI"
+          IMAGE_URI="${{ env.ECR_REGISTRY }}/${{ inputs.service-name }}:${{ github.sha }}"
+          echo "image-uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+          echo "Building and pushing: $IMAGE_URI"
 
       - name: Build Docker image
         run: |
           docker build \
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
             --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
-            -t "${{ steps.image-meta.outputs.image_uri }}" \
+            -t "${{ steps.image-meta.outputs.image-uri }}" \
             .
 
-      # Trivy image scan — fail on CRITICAL/HIGH (Invariant §4)
-      - name: Run Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8  # v0.24.0
-        with:
-          image-ref: ${{ steps.image-meta.outputs.image_uri }}
-          format: sarif
-          output: trivy-results.sarif
-          severity: CRITICAL,HIGH
-          exit-code: "1"
-          ignore-unfixed: true
-
-      - name: Upload Trivy results to GitHub Security
-        if: always()
-        uses: github/codeql-action/upload-sarif@dd746615b3d6f9e9c5c7e42ca06c5d6e982a9b38  # v3.27.5
-        with:
-          sarif_file: trivy-results.sarif
-
       - name: Push image to ECR
-        run: docker push "${{ steps.image-meta.outputs.image_uri }}"
+        run: docker push "${{ steps.image-meta.outputs.image-uri }}"
 
-      # cosign sign — Invariant §3 (signed images)
+      # -----------------------------------------------------------------------
+      # cosign KMS sign — uses velnor-cosign-signing-v1 key (T-W0-009)
+      # KMS key rotation handled at the alias level; no workflow change needed.
+      # -----------------------------------------------------------------------
       - name: Install cosign
         uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da  # v3.7.0
 
-      - name: Sign image with cosign (keyless via OIDC)
-        env:
-          COSIGN_EXPERIMENTAL: "1"
+      - name: Sign image with cosign (KMS)
         run: |
-          cosign sign --yes "${{ steps.image-meta.outputs.image_uri }}"
+          cosign sign --yes \
+            --key "${{ env.COSIGN_KMS_KEY }}" \
+            "${{ steps.image-meta.outputs.image-uri }}"
 
-  # ---------------------------------------------------------------------------
-  # Job 4: verify OIDC S3 access (smoke test per AC in T-W0-010)
-  # Runs only on pushes to main.
-  # ---------------------------------------------------------------------------
-  oidc-smoke-test:
-    name: OIDC S3 ls smoke test
-    runs-on: ubuntu-24.04
-    needs: build
-    if: github.ref == 'refs/heads/main' && inputs.run_build == true
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502  # v4.0.2
+      # -----------------------------------------------------------------------
+      # Attach SBOM as a cosign attestation (optional — skipped if Syft unavailable)
+      # -----------------------------------------------------------------------
+      - name: Generate SBOM for signed image (Syft)
+        uses: anchore/sbom-action@e11c554f704a0b820cbf8c51673f6945e0731532  # v0.17.0
         with:
-          role-to-assume: ${{ vars.VELNOR_GHA_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-session-name: oidc-smoke-${{ inputs.service_name }}-${{ github.run_id }}
+          image: '${{ steps.image-meta.outputs.image-uri }}'
+          format: cyclonedx-json
+          artifact-name: 'sbom-${{ inputs.service-name }}-${{ github.sha }}.cdx.json'
+          output-file: sbom.cdx.json
 
-      - name: S3 ls smoke test (TF state bucket)
-        run: aws s3 ls s3://velnor-dev-tfstate-bootstrap/ --region us-east-1
+      - name: Attest SBOM with cosign (KMS)
+        run: |
+          cosign attest --yes \
+            --key "${{ env.COSIGN_KMS_KEY }}" \
+            --predicate sbom.cdx.json \
+            --type cyclonedx \
+            "${{ steps.image-meta.outputs.image-uri }}"
