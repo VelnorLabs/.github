@@ -63,7 +63,7 @@ on:
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
-  GHA_ROLE_ARN: 'arn:aws:iam::113831183566:role/velnor-github-actions'
+  GHA_ROLE_ARN: 'arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/velnor-github-actions'
   ECS_CLUSTER: ${{ inputs.ecs_cluster }}
   IAC_REPO_PATH: 'velnor-iac'
 
@@ -111,25 +111,19 @@ jobs:
       # Step 2: tofu apply — update ECS task definition for this service
       # -----------------------------------------------------------------------
       - name: Install OpenTofu
-        uses: opentofu/setup-opentofu@v1
+        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f  # v1
         with:
           tofu_version: '1.7.x'
 
-      - name: tofu init (dev account)
-        working-directory: ${{ env.IAC_REPO_PATH }}/accounts/dev
+      - name: tofu init (ecs/${{ inputs.service }} workspace)
+        working-directory: ${{ env.IAC_REPO_PATH }}/accounts/dev/ecs/${{ inputs.service }}
         run: |
-          tofu init \
-            -backend-config="bucket=velnor-dev-tfstate-bootstrap" \
-            -backend-config="key=dev/ecs-${{ inputs.service }}.tfstate" \
-            -backend-config="region=${{ env.AWS_REGION }}" \
-            -backend-config="dynamodb_table=velnor-tfstate-lock" \
-            -input=false
+          tofu init -input=false
 
       - name: tofu apply (ECS task definition for ${{ inputs.service }})
-        working-directory: ${{ env.IAC_REPO_PATH }}/accounts/dev
+        working-directory: ${{ env.IAC_REPO_PATH }}/accounts/dev/ecs/${{ inputs.service }}
         run: |
           tofu apply -auto-approve \
-            -target="module.ecs_service[\"${{ inputs.service }}\"].aws_ecs_task_definition.this" \
             -var="image_tag=${{ inputs.image_tag }}" \
             -input=false
 

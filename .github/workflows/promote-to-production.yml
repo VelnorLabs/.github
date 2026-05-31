@@ -48,7 +48,7 @@ on:
 
 env:
   AWS_REGION: 'us-east-1'
-  GHA_ROLE_ARN: 'arn:aws:iam::113831183566:role/velnor-github-actions'
+  GHA_ROLE_ARN: 'arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/velnor-github-actions'
   ECS_CLUSTER: 'velnor-prod-cluster'
   IAC_REPO_PATH: 'velnor-iac'
   # AppConfig identifiers (per DEC-0047 and network rev. 5)
