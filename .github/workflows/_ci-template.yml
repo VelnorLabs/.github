@@ -30,7 +30,7 @@ on:
   workflow_call:
     inputs:
       language:
-        description: 'go or python'
+        description: 'go, python, or terraform'
         required: true
         type: string
       service-name:
@@ -52,6 +52,11 @@ on:
         required: false
         type: string
         default: '3.12'
+      tfsec-version:
+        description: 'tfsec version (used when language=terraform)'
+        required: false
+        type: string
+        default: 'latest'
       aws-region:
         description: 'AWS region for ECR + OIDC'
         required: false
@@ -76,6 +81,7 @@ jobs:
   lint-unit-scan:
     name: Stage 1 · lint → unit → build → Trivy → SBOM → PII lint
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     permissions:
       id-token: write    # required for SBOM attestation + potential future OIDC use
       contents: read
@@ -151,9 +157,45 @@ jobs:
         run: pytest --tb=short -q
 
       # -----------------------------------------------------------------------
+      # IaC lint — tfsec for Terraform/OpenTofu repos (language=terraform)
+      # Scans for security misconfigurations in HCL; fails on HIGH/CRITICAL.
+      # -----------------------------------------------------------------------
+      - name: Install tfsec (IaC lint)
+        if: inputs.language == 'terraform'
+        run: |
+          TFSEC_VERSION="${{ inputs.tfsec-version }}"
+          if [ "$TFSEC_VERSION" = "latest" ]; then
+            TFSEC_VERSION=$(curl -s https://api.github.com/repos/aquasecurity/tfsec/releases/latest | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
+          fi
+          echo "Installing tfsec $TFSEC_VERSION"
+          curl -sLo tfsec "https://github.com/aquasecurity/tfsec/releases/download/${TFSEC_VERSION}/tfsec-linux-amd64"
+          chmod +x tfsec
+          sudo mv tfsec /usr/local/bin/tfsec
+          tfsec --version
+
+      - name: tfsec IaC scan
+        if: inputs.language == 'terraform'
+        run: |
+          tfsec . \
+            --severity HIGH,CRITICAL \
+            --format sarif \
+            --out tfsec-results.sarif \
+            --soft-fail
+          # Check exit code separately so we can upload SARIF first
+          tfsec . --severity HIGH,CRITICAL --no-color
+
+      - name: Upload tfsec SARIF to GitHub Security
+        if: inputs.language == 'terraform' && always()
+        uses: github/codeql-action/upload-sarif@dd746615b3d6f9e9c5c7e42ca06c5d6e982a9b38  # v3.27.5
+        with:
+          sarif_file: tfsec-results.sarif
+
+      # -----------------------------------------------------------------------
       # Build container image (local — not pushed yet)
+      # Skipped for terraform language (no container artifact).
       # -----------------------------------------------------------------------
       - name: Build container image
+        if: inputs.language != 'terraform'
         run: |
           docker build \
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
@@ -163,8 +205,10 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Trivy vulnerability scan — fail on CRITICAL or HIGH
+      # Skipped for terraform language (tfsec handles IaC scanning above).
       # -----------------------------------------------------------------------
       - name: Trivy vulnerability scan
+        if: inputs.language != 'terraform'
         uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8  # v0.24.0
         with:
           image-ref: '${{ inputs.service-name }}:${{ github.sha }}'
@@ -175,16 +219,17 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy SARIF to GitHub Security
-        if: always()
+        if: inputs.language != 'terraform' && always()
         uses: github/codeql-action/upload-sarif@dd746615b3d6f9e9c5c7e42ca06c5d6e982a9b38  # v3.27.5
         with:
           sarif_file: trivy-results.sarif
 
       # -----------------------------------------------------------------------
       # SBOM — Syft generates CycloneDX SBOM and attaches it as a workflow artifact
+      # Skipped for terraform language (no container image to generate SBOM from).
       # -----------------------------------------------------------------------
       - name: Generate SBOM (Syft)
-        if: always()
+        if: inputs.language != 'terraform' && always()
         uses: anchore/sbom-action@e11c554f704a0b820cbf8c51673f6945e0731532  # v0.17.0
         with:
           image: '${{ inputs.service-name }}:${{ github.sha }}'
@@ -215,8 +260,9 @@ jobs:
   build-sign-push:
     name: Stage 2 · build → push → cosign sign
     needs: lint-unit-scan
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && inputs.language != 'terraform'
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     permissions:
       id-token: write    # OIDC token for AWS + cosign
       contents: read
