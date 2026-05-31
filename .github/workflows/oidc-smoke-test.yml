@@ -1,0 +1,63 @@
+# ---------------------------------------------------------------------------
+# OIDC smoke-test · T-W0-010 AC verification
+#
+# Verifies that GitHub Actions can assume the velnor-github-actions IAM role
+# via OIDC (no static keys). This is the live evidence for AC-1.
+#
+# Trigger: manual (workflow_dispatch) or on push to main
+#
+# Invariants enforced:
+#   - OIDC auth — no static AWS keys (T-W0-010 / Invariant §9)
+#   - Pinned action SHAs (Invariant §4)
+#   - Scoped to VelnorLabs org + main branch
+# ---------------------------------------------------------------------------
+
+name: OIDC Smoke Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/oidc-smoke-test.yml"
+
+permissions:
+  id-token: write   # Required to mint OIDC token
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  GHA_ROLE_ARN: "arn:aws:iam::113831183566:role/velnor-github-actions"
+
+jobs:
+  oidc-assume-role:
+    name: "OIDC: assume velnor-github-actions role"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        # actions/checkout v4.2.2 pinned by SHA
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Configure AWS credentials via OIDC
+        # aws-actions/configure-aws-credentials v4.0.2 pinned by SHA
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
+        with:
+          role-to-assume: ${{ env.GHA_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: "gha-oidc-smoke-${{ github.run_id }}"
+
+      - name: Verify AWS identity (OIDC smoke test)
+        run: |
+          echo "=== OIDC Smoke Test ==="
+          aws sts get-caller-identity
+          echo "=== Role assumed successfully — no static keys used ==="
+
+      - name: List ECR repos (functional permission check)
+        run: |
+          echo "=== ECR Access Check ==="
+          aws ecr describe-repositories \
+            --region ${{ env.AWS_REGION }} \
+            --query 'repositories[].repositoryName' \
+            --output json
+          echo "=== ECR access confirmed ==="
