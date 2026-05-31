@@ -53,11 +53,9 @@ jobs:
           aws sts get-caller-identity
           echo "=== Role assumed successfully — no static keys used ==="
 
-      - name: List ECR repos (functional permission check)
+      - name: S3 TF state read (functional permission check)
         run: |
-          echo "=== ECR Access Check ==="
-          aws ecr describe-repositories \
-            --region ${{ env.AWS_REGION }} \
-            --query 'repositories[].repositoryName' \
-            --output json
-          echo "=== ECR access confirmed ==="
+          echo "=== S3 TF State Read Check ==="
+          aws s3 ls s3://velnor-dev-tfstate-bootstrap/ \
+            --region ${{ env.AWS_REGION }} | head -5
+          echo "=== S3 read confirmed — OIDC permissions are functional ==="
