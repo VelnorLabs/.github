@@ -69,7 +69,7 @@ on:
 
 env:
   AWS_REGION: ${{ inputs.aws-region }}
-  ECR_REGISTRY: '${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com'
+  ECR_REGISTRY: '${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ inputs.aws-region }}.amazonaws.com'
   COSIGN_KMS_KEY: 'awskms:///arn:aws:kms:us-east-1:${{ vars.AWS_ACCOUNT_ID }}:alias/velnor-cosign-signing-v1'
   GHA_ROLE_ARN: 'arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/velnor-github-actions'
 

@@ -113,7 +113,7 @@ jobs:
       - name: Install OpenTofu
         uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f  # v1
         with:
-          tofu_version: '1.7.x'
+          tofu_version: '1.12.0'
 
       - name: tofu init (ecs/${{ inputs.service }} workspace)
         working-directory: ${{ env.IAC_REPO_PATH }}/accounts/dev/ecs/${{ inputs.service }}
