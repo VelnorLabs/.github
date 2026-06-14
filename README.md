@@ -42,6 +42,101 @@ jobs:
 That is the entire `ci.yml`. The shared template handles lint, unit tests,
 build, Trivy scan, cosign image signing, and OIDC smoke test.
 
+## SDK bypass check (`_sdk-bypass-check.yml` · T-W0-020)
+
+A second reusable workflow that **blocks a PR if service code imports AWS, a
+database driver, or an AI provider SDK directly** instead of going through the
+platform SDK (`velnor_platform_sdk` for Python, `velnor_platform_sdk_go` for
+Go). It is what keeps tenant isolation, cost tripwires, audit logging, PII
+tokenization, and OTEL tracing from being silently bypassed by a stray
+`import boto3`.
+
+> **Note on naming:** there is no `BYPASS_LINT_BLOCKS_SENTINEL` symbol in the
+> codebase. The "bypass check" is the `import_audit` tool below; the "sentinel"
+> is its self-test suite (the `test_*_import_fails` cases) that proves the tool
+> actually fails on a forbidden import. If you came here from that ledger name,
+> this section is what it meant.
+
+### Wiring it into a service repo
+
+Add a job to the repo's `.github/workflows/ci.yml`:
+
+```yaml
+  sdk-bypass-check:
+    uses: VelnorLabs/.github/.github/workflows/_sdk-bypass-check.yml@main
+    with:
+      repo-type: py        # or: go
+    secrets: inherit       # passes VELNOR_SDK_READ_TOKEN through
+```
+
+The workflow checks out the calling repo, fetches the matching `import_audit`
+tool from the private SDK repo (using `VELNOR_SDK_READ_TOKEN`), runs it, posts
+a PR comment listing violations on failure, and **exits non-zero to block the
+PR** if any unexempted violation remains. `scan-root` (default `.`) narrows the
+scan; `sdk-py-ref` / `sdk-go-ref` (default `main`) pin which SDK ref the tool
+is pulled from.
+
+### What it enforces
+
+The audit walks every source file and flags imports matching a forbidden list:
+
+| | Forbidden import substrings |
+|---|---|
+| **Python** (`FORBIDDEN_PREFIXES`) | `boto3`, `botocore`, `psycopg`, `psycopg2`, `asyncpg`, `anthropic`, `openai`, `appconfigdata` |
+| **Go** (`forbiddenSubstrings`) | `aws/aws-sdk-go-v2`, `aws/aws-sdk-go/` (v1), `lib/pq`, `jackc/pgx`, `anthropic-sdk-go`, `openai-go` |
+
+Files inside the SDK package tree itself are exempt (path segments
+`velnor_platform_sdk` / `velnor_platform_sdk_go` and `tools/`) — the SDK *is*
+the layer that's allowed to import these directly.
+
+**Exit codes:** `0` = clean, `1` = violations found (PR blocked), `2` = tool
+error (bad root, unreadable allowlist).
+
+### Per-repo exemptions: `.import-audit-allow`
+
+When the SDK doesn't yet provide a facade for some capability, a repo can
+exempt a specific (file, import) pair by adding a `.import-audit-allow` file at
+its scan root. One exemption per line, `#` comments allowed:
+
+```
+# <file-path-substring> <import-path-substring>
+internal/services/tenant_provisioner jackc/pgx
+```
+
+A violation is exempted only when its file path contains the first substring
+**and** its import path contains the second — so the exemption is scoped to one
+call site, not a blanket allow. Exemptions are intentionally narrow and should
+carry a comment explaining why (and a note to remove them once an SDK facade
+lands). See `velnor-admin-api/.import-audit-allow` for a live example (admin
+schema DDL that sits outside the per-tenant `tenancy.WithTenant` RLS model).
+
+### How the sentinel proves the gate works
+
+The audit tool ships with its own test suite (`tests/test_import_audit.py` in
+sdk-py, `tools/import_audit/main_test.go` in sdk-go). These are the "sentinel"
+tests: each plants a known-forbidden import in a temp tree and asserts
+`audit(...) == 1`, plus mirror cases asserting SDK-internal files return `0`.
+If someone weakens the forbidden list or the exemption logic, these tests fail
+in the SDK repo's own CI — so the gate can't be quietly defanged. A companion
+cross-language contract test keeps the Python and Go forbidden lists from
+drifting apart.
+
+### `_schema-bypass-check.yml` (T-W1-018)
+
+A sibling workflow with the same shape. It clones `velnor-schemas@main` to get
+the canonical exported-type name list, then scans the calling repo for
+**top-level type definitions that shadow a canonical schema name** (TypeScript,
+Python, or Go) and fails if any shadow is found — so services consume the
+generated schema types instead of redeclaring them. Wire it the same way:
+
+```yaml
+  schema-check:
+    uses: VelnorLabs/.github/.github/workflows/_schema-bypass-check.yml@main
+    secrets: inherit
+```
+
+`scan_paths` (default `src`) narrows the scan.
+
 ## GitHub OIDC
 
 The OIDC AWS provider + `velnor-github-actions` IAM role live in
