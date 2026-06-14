@@ -222,8 +222,14 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Build container image
         if: inputs.language != 'terraform'
+        env:
+          # Forwarded to the Docker build as a BuildKit secret so the build can
+          # fetch private VelnorLabs Go modules (the platform SDK). Empty for
+          # repos with no private deps — the Dockerfile skips the git rewrite.
+          VELNOR_SDK_READ_TOKEN: ${{ secrets.VELNOR_SDK_READ_TOKEN }}
         run: |
-          docker build \
+          DOCKER_BUILDKIT=1 docker build \
+            --secret id=velnor_sdk_token,env=VELNOR_SDK_READ_TOKEN \
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
             --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
             -t "${{ inputs.service-name }}:${{ github.sha }}" \
@@ -349,8 +355,11 @@ jobs:
           echo "Building and pushing: $IMAGE_URI"
 
       - name: Build Docker image
+        env:
+          VELNOR_SDK_READ_TOKEN: ${{ secrets.VELNOR_SDK_READ_TOKEN }}
         run: |
-          docker build \
+          DOCKER_BUILDKIT=1 docker build \
+            --secret id=velnor_sdk_token,env=VELNOR_SDK_READ_TOKEN \
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
             --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
             -t "${{ steps.image-meta.outputs.image-uri }}" \
