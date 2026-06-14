@@ -257,8 +257,11 @@ jobs:
       # SBOM — Syft generates CycloneDX SBOM and attaches it as a workflow artifact
       # Skipped for terraform language (no container image to generate SBOM from).
       # -----------------------------------------------------------------------
+      # Only after a successful build (the image must exist), and never fatal —
+      # the SBOM is an artifact, not a merge gate.
       - name: Generate SBOM (Syft)
-        if: inputs.language != 'terraform' && always()
+        if: inputs.language != 'terraform' && success()
+        continue-on-error: true
         uses: anchore/sbom-action@e11c554f704a0b820cbf8c51673f6945e0731532  # v0.17.0
         with:
           image: '${{ inputs.service-name }}:${{ github.sha }}'
