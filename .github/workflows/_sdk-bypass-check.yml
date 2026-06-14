@@ -117,8 +117,12 @@ jobs:
         if: inputs.repo-type == 'go'
         id: go-audit
         run: |
-          go run ./velnor-platform-sdk-go/tools/import_audit \
-            --root service-repo/${{ inputs.scan-root }}
+          # `go run ./tools/import_audit` must run inside the SDK module (the
+          # workspace root has no go.mod). Resolve the service-repo scan root to
+          # an absolute path before changing directory.
+          SCAN_ROOT="$(cd "service-repo/${{ inputs.scan-root }}" && pwd)"
+          cd velnor-platform-sdk-go
+          go run ./tools/import_audit --root "$SCAN_ROOT"
         continue-on-error: true
 
       # -----------------------------------------------------------------------
