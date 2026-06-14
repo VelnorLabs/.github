@@ -46,6 +46,10 @@ on:
         required: false
         type: string
         default: "main"
+    secrets:
+      VELNOR_SDK_READ_TOKEN:
+        description: "PAT with contents:read on the private SDK repos, used to check out the audit tool. Set as a repo secret on each caller."
+        required: false
 
 jobs:
   sdk-bypass-check:
