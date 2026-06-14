@@ -132,6 +132,18 @@ jobs:
           python-version: ${{ inputs.python-version }}
           cache: 'pip'
 
+      # Allow pip to install the private platform SDK via a git+https requirement.
+      # Rewrites github.com HTTPS auth using VELNOR_SDK_READ_TOKEN (a repo secret);
+      # skipped when the secret is absent (repos with no private git deps).
+      - name: Configure private pip (git) access
+        if: inputs.language == 'python'
+        env:
+          VELNOR_SDK_READ_TOKEN: ${{ secrets.VELNOR_SDK_READ_TOKEN }}
+        run: |
+          if [ -n "${VELNOR_SDK_READ_TOKEN}" ]; then
+            git config --global url."https://x-access-token:${VELNOR_SDK_READ_TOKEN}@github.com/".insteadOf "https://github.com/"
+          fi
+
       # -----------------------------------------------------------------------
       # Lint — Go: golangci-lint; Python: ruff + mypy
       # -----------------------------------------------------------------------
