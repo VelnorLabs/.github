@@ -76,8 +76,13 @@ jobs:
   deploy-dev:
     name: Stage 3 · tofu apply → ECS update → atlas migrate → smoke
     runs-on: ubuntu-latest
-    # Skip cleanly until the target environment's AWS_ACCOUNT_ID variable is set.
-    if: vars.AWS_ACCOUNT_ID != ''
+    # Two gates, both required:
+    #   1. AWS_ACCOUNT_ID set (account wired).
+    #   2. DEPLOY_DEV_ENABLED == 'true' — an explicit opt-in flipped ONLY after the
+    #      per-service ECS terraform + IAM deploy permissions are confirmed and a
+    #      reviewed first `tofu apply` has succeeded manually. This prevents an
+    #      auto-approve apply firing against infra that isn't deploy-ready.
+    if: vars.AWS_ACCOUNT_ID != '' && vars.DEPLOY_DEV_ENABLED == 'true'
     environment: ${{ inputs.environment }}
     permissions:
       id-token: write    # OIDC token for AWS
