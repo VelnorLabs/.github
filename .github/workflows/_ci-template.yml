@@ -111,6 +111,20 @@ jobs:
           go-version: ${{ inputs.go-version }}
           cache: true
 
+      # Allow `go get`/build to fetch private VelnorLabs Go modules (e.g. the
+      # platform SDK). GOPRIVATE skips the checksum/proxy; the git rewrite uses
+      # VELNOR_SDK_READ_TOKEN (a repo secret) for HTTPS auth. The git rewrite is
+      # skipped when the secret is absent (repos with no private Go deps).
+      - name: Configure private Go module access
+        if: inputs.language == 'go'
+        env:
+          VELNOR_SDK_READ_TOKEN: ${{ secrets.VELNOR_SDK_READ_TOKEN }}
+        run: |
+          echo "GOPRIVATE=github.com/VelnorLabs/*" >> "$GITHUB_ENV"
+          if [ -n "${VELNOR_SDK_READ_TOKEN}" ]; then
+            git config --global url."https://x-access-token:${VELNOR_SDK_READ_TOKEN}@github.com/".insteadOf "https://github.com/"
+          fi
+
       - name: Set up Python
         if: inputs.language == 'python'
         uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
