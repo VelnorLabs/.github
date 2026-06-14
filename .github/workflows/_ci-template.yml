@@ -292,7 +292,10 @@ jobs:
   build-sign-push:
     name: Stage 2 · build → push → cosign sign
     needs: lint-unit-scan
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && inputs.language != 'terraform'
+    # Also gated on AWS_ACCOUNT_ID being set — until the dev/staging/prod account
+    # vars are wired (per-environment, see Wave-0 follow-up), the ECR push + OIDC
+    # cannot work; skip Stage 2 cleanly so push-to-main stays green on Stage 1.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && inputs.language != 'terraform' && vars.AWS_ACCOUNT_ID != ''
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
