@@ -62,6 +62,16 @@ on:
         required: false
         type: string
         default: 'us-east-1'
+      health-check:
+        description: 'Run a container boot smoke test (curl /healthz, assert /readyz=503) after build. Enable for service repos.'
+        required: false
+        type: boolean
+        default: false
+      health-port:
+        description: 'Container port the service listens on for the smoke test'
+        required: false
+        type: string
+        default: '8080'
     outputs:
       image-uri:
         description: 'Full ECR URI of the signed image (empty if build-sign-push skipped)'
@@ -202,6 +212,28 @@ jobs:
             --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
             -t "${{ inputs.service-name }}:${{ github.sha }}" \
             .
+
+      # -----------------------------------------------------------------------
+      # Container boot smoke test — service repos only (health-check: true).
+      # Asserts the image boots, /healthz is reachable, and /readyz returns 503
+      # before dependencies are wired (the Velnor service convention).
+      # -----------------------------------------------------------------------
+      - name: Container boot smoke test
+        if: inputs.language != 'terraform' && inputs.health-check
+        run: |
+          PORT="${{ inputs.health-port }}"
+          docker run -d --name smoke-${{ inputs.service-name }} \
+            -p "${PORT}:${PORT}" "${{ inputs.service-name }}:${{ github.sha }}"
+          sleep 5
+          curl -sf "http://localhost:${PORT}/healthz"
+          STATUS=$(curl -o /dev/null -w "%{http_code}" "http://localhost:${PORT}/readyz")
+          echo "readyz status: $STATUS"
+          if [ "$STATUS" = "503" ]; then
+            echo "readyz correctly 503 (deps not wired in CI)"
+          else
+            echo "unexpected readyz status: $STATUS"; docker logs smoke-${{ inputs.service-name }}; exit 1
+          fi
+          docker stop smoke-${{ inputs.service-name }}
 
       # -----------------------------------------------------------------------
       # Trivy vulnerability scan — fail on CRITICAL or HIGH
