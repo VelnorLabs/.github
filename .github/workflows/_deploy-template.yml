@@ -64,7 +64,11 @@ on:
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
-  GHA_ROLE_ARN: 'arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/velnor-github-actions'
+  # Stage-3 deploy uses velnor-github-deploy (ECS/IAM/EC2/Logs + TF-state KMS
+  # decrypt). The locked-down velnor-github-actions CI role is explicitly denied
+  # TF-state KMS decrypt and lacks deploy permissions. Assumable via OIDC under
+  # `environment: dev` (the deploy role's trust). (DEC-0061 RCA / LE-028.)
+  GHA_ROLE_ARN: 'arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/velnor-github-deploy'
   ECS_CLUSTER: ${{ inputs.ecs_cluster }}
   IAC_REPO_PATH: 'velnor-iac'
 
