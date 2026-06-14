@@ -196,7 +196,7 @@ jobs:
 
       - name: Upload tfsec SARIF to GitHub Security
         if: inputs.language == 'terraform' && always()
-        uses: github/codeql-action/upload-sarif@dd746615b3d6f9e9c5c7e42ca06c5d6e982a9b38  # v3.27.5
+        uses: github/codeql-action/upload-sarif@6825d5659bf007b85a0866e2d0f434aacf50de94  # v3.27.5
         with:
           sarif_file: tfsec-results.sarif
 
@@ -252,7 +252,7 @@ jobs:
 
       - name: Upload Trivy SARIF to GitHub Security
         if: inputs.language != 'terraform' && always()
-        uses: github/codeql-action/upload-sarif@dd746615b3d6f9e9c5c7e42ca06c5d6e982a9b38  # v3.27.5
+        uses: github/codeql-action/upload-sarif@6825d5659bf007b85a0866e2d0f434aacf50de94  # v3.27.5
         with:
           sarif_file: trivy-results.sarif
 
