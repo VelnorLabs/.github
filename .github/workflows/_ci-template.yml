@@ -186,19 +186,9 @@ jobs:
       - name: tfsec IaC scan
         if: inputs.language == 'terraform'
         run: |
-          tfsec . \
-            --severity HIGH,CRITICAL \
-            --format sarif \
-            --out tfsec-results.sarif \
-            --soft-fail
-          # Check exit code separately so we can upload SARIF first
+          # Inline output; fails on HIGH/CRITICAL. (SARIF upload to GitHub Security
+          # is omitted — code scanning is unavailable on Free-plan private repos.)
           tfsec . --severity HIGH,CRITICAL --no-color
-
-      - name: Upload tfsec SARIF to GitHub Security
-        if: inputs.language == 'terraform' && always()
-        uses: github/codeql-action/upload-sarif@6825d5659bf007b85a0866e2d0f434aacf50de94  # v3.27.5
-        with:
-          sarif_file: tfsec-results.sarif
 
       # -----------------------------------------------------------------------
       # Build container image (local — not pushed yet)
@@ -244,17 +234,12 @@ jobs:
         uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8  # v0.24.0
         with:
           image-ref: '${{ inputs.service-name }}:${{ github.sha }}'
-          format: sarif
-          output: trivy-results.sarif
+          format: table
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
           ignore-unfixed: true
-
-      - name: Upload Trivy SARIF to GitHub Security
-        if: inputs.language != 'terraform' && always()
-        uses: github/codeql-action/upload-sarif@6825d5659bf007b85a0866e2d0f434aacf50de94  # v3.27.5
-        with:
-          sarif_file: trivy-results.sarif
+        # SARIF upload to GitHub Security is omitted — code scanning is unavailable
+        # on Free-plan private repos. Trivy still fails the build on CRITICAL/HIGH.
 
       # -----------------------------------------------------------------------
       # SBOM — Syft generates CycloneDX SBOM and attaches it as a workflow artifact
