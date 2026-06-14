@@ -163,10 +163,16 @@ jobs:
           elif [ -f requirements.txt ]; then
             pip install --quiet -r requirements.txt
           fi
+          # For pyproject-only projects, install the package + dev extra. Fail
+          # loudly if it errors (a swallowed failure here means missing deps and
+          # confusing downstream errors). The no-extra fallback covers projects
+          # without a [dev] optional-dependencies group.
           if [ -f pyproject.toml ]; then
-            pip install --quiet -e ".[dev]" 2>/dev/null || pip install --quiet -e . 2>/dev/null || true
+            pip install --quiet -e ".[dev]" || pip install --quiet -e .
           fi
-          pip install --quiet ruff mypy
+          # Pin ruff + mypy so CI matches local tooling (their rules tighten
+          # across releases; unpinned drift produces CI-only lint/type failures).
+          pip install --quiet "ruff==0.15.17" "mypy==2.1.0"
 
       - name: Lint (Python — ruff check)
         if: inputs.language == 'python'
