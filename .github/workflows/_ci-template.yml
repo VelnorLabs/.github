@@ -46,7 +46,7 @@ on:
         description: 'Go toolchain version (used when language=go)'
         required: false
         type: string
-        default: '1.22'
+        default: '1.25'
       python-version:
         description: 'Python version (used when language=python)'
         required: false
@@ -113,7 +113,7 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Lint (Go — golangci-lint)
         if: inputs.language == 'go'
-        uses: golangci/golangci-lint-action@4696ba8abb4c13edca2f2b0f9093a33e61512369  # v6.5.0
+        uses: golangci/golangci-lint-action@9fae48acfc02a90574d7c304a1758ef9895495fa  # v7.0.1
         with:
           version: latest
           args: --timeout=5m
