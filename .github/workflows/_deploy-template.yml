@@ -46,14 +46,11 @@ on:
         required: false
         type: string
         default: "velnor-dev-cluster"
-    secrets:
-      # AWS_ACCOUNT_ID is NOT secret — it is an environment-scoped VARIABLE
-      # (vars.AWS_ACCOUNT_ID, set per dev/staging/prod environment) read in env:
-      # below. Declaring it as a required secret caused a startup_failure on
-      # every push (the caller can't provide it via `secrets: inherit`).
-      AWS_REGION:
-        description: 'AWS region (default: us-east-1)'
-        required: false
+    # No `secrets:` block. AWS_ACCOUNT_ID is an environment-scoped VARIABLE
+    # (vars.AWS_ACCOUNT_ID), not a secret. There is intentionally no AWS_REGION
+    # secret either — the `secrets` context is NOT available in a workflow-level
+    # `env:` block, so referencing it there startup_failures every deploy. Region
+    # is not sensitive and is hardcoded in env: below.
     outputs:
       deploy_status:
         description: 'Result of Stage 3 deploy-dev job (success | failure)'
@@ -63,7 +60,7 @@ on:
         value: ${{ jobs.integration-tests.outputs.integration_status }}
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+  AWS_REGION: 'us-east-1'
   # Stage-3 assumes the dedicated DEPLOY role (velnor-github-deploy), which can
   # decrypt TF state + mutate ECS/IAM/EC2/Logs — NOT the locked-down CI role
   # (velnor-github-actions, which is denied state KMS decrypt). The deploy role
