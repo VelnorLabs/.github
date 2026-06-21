@@ -232,7 +232,7 @@ jobs:
         run: |
           # Inline output; fails on HIGH/CRITICAL. (SARIF upload to GitHub Security
           # is omitted — code scanning is unavailable on Free-plan private repos.)
-          tfsec . --severity HIGH,CRITICAL --no-color
+          tfsec . --minimum-severity HIGH --no-color
 
       # -----------------------------------------------------------------------
       # Build container image (local — not pushed yet)
