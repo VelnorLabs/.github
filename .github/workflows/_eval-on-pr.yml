@@ -1,123 +1,208 @@
 # ---------------------------------------------------------------------------
-# VelnorLabs shared eval-on-PR workflow · T-W0-011
+# VelnorLabs shared eval-on-PR workflow · T-W3-020 (real impl; replaces the
+# T-W0-011 stub)
 #
-# Callable via `workflow_call`. Checks whether any changed paths touch AI
-# Harness or eval directories; if so, runs the eval subset. Otherwise skips.
+# Stage-1 on-PR eval subset per Q-16/Q-17: a git-diff resolver
+# (velnor-evals/hotfix_subset_resolver.py) classifies the PR's changed paths
+# as one of {ai_harness_intersected, infra_only, mixed} and derives the
+# golden-subset tags; the subset eval (velnor-evals harnesses/subset_run.py,
+# recorded data-only mode — no model calls, deterministic, seconds-fast) runs
+# ONLY for ai_harness_intersected (targeted tags) or mixed (full subset).
+# Infra-only and tests-only PRs skip the eval entirely — that is the CI-time
+# saving this workflow exists for.
 #
-# Real eval execution is deferred to T-W4-xxx. This workflow contains a
-# stub that will be replaced with actual harness invocation in that task.
+# INFORMATIONAL AT WAVE 3 (Q-19 rev.5): this job INFORMS — job summary +
+# ::warning:: annotations when a score sits >2pp below baseline — and always
+# succeeds on scores. Hard-gating on regression arrives with Wave-5 T-W5-001.
+# Structural failures (resolver crash, broken golden sets) still fail the job.
 #
-# Usage in a caller repo (.github/workflows/ci.yml):
+# Usage in a caller repo (.github/workflows/eval-subset-on-pr.yml):
 #
+#   name: eval-subset-on-pr
+#   on:
+#     pull_request:
+#       branches: [main]
+#   permissions:
+#     contents: read
 #   jobs:
-#     eval:
+#     eval-on-pr:
 #       uses: VelnorLabs/.github/.github/workflows/_eval-on-pr.yml@main
-#       with:
-#         changed-paths: ${{ toJson(steps.changed.outputs.paths) }}
+#       # non-velnor-evals repos additionally need (see token note below):
+#       # secrets:
+#       #   evals-checkout-token: ${{ secrets.VELNOR_EVALS_READ_TOKEN }}
+#
+# changed-paths input: optional. When omitted the workflow computes
+# `git diff --name-only origin/<base>...HEAD` itself (plain pull_request
+# context). Passing it (T-W0-011 usage) still works.
+#
+# Cross-repo token note (known org gap, same as the deploy-template
+# iac-checkout bug): github.token cannot read OTHER private repos, so callers
+# outside velnor-evals must pass `evals-checkout-token` (org read PAT /
+# GitHub App token) to fetch the resolver + golden sets. Without it the job
+# emits a ::warning:: and exits 0 (informational — it must never block).
 #
 # Invariants enforced:
 #   - Pinned action SHAs (Invariant §4)
-#   - No static AWS keys (eval subset is read-only; OIDC not needed here)
+#   - Plain `pull_request` context only — never pull_request_target; the one
+#     optional secret is a read-only checkout token, never exposed to eval code
+#   - permissions: contents: read (no writes, no OIDC — recorded eval is local)
 # ---------------------------------------------------------------------------
 
 on:
   workflow_call:
     inputs:
       changed-paths:
-        description: 'JSON list of changed file paths (e.g. from tj-actions/changed-files)'
-        required: true
+        description: 'Optional JSON list of changed file paths; computed via git diff when omitted'
+        required: false
         type: string
+        default: ''
       eval-timeout-minutes:
         description: 'Maximum minutes to allow the eval subset to run'
         required: false
         type: number
         default: 15
+    secrets:
+      evals-checkout-token:
+        description: 'Read token for VelnorLabs/velnor-evals (required for callers outside velnor-evals)'
+        required: false
 
 jobs:
   eval-on-pr:
-    name: Eval subset (AI Harness paths)
+    name: eval/on-pr
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     timeout-minutes: ${{ fromJson(inputs.eval-timeout-minutes) }}
 
     steps:
-      - name: Checkout
+      - name: Checkout PR
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0
 
       # -----------------------------------------------------------------------
-      # Determine whether any changed path is under harness/ or evals/
-      # Uses a pure-bash approach to avoid adding a node action dependency.
+      # Changed paths: input if provided (T-W0-011 compat), else git diff vs base
       # -----------------------------------------------------------------------
-      - name: Check for AI Harness / eval path changes
-        id: path-check
+      - name: Collect changed paths
+        id: diff
+        env:
+          CHANGED_PATHS_INPUT: ${{ inputs.changed-paths }}
         run: |
           set -euo pipefail
-
-          CHANGED_PATHS='${{ inputs.changed-paths }}'
-          echo "Changed paths JSON: $CHANGED_PATHS"
-
-          # Parse the JSON list with python3 (available on ubuntu-24.04 runners)
-          HARNESS_CHANGED=$(python3 - <<'PYEOF'
-          import json, sys, re
-
-          raw = '''${{ inputs.changed-paths }}'''
-          try:
-              paths = json.loads(raw)
-          except json.JSONDecodeError:
-              # Fallback: treat as newline-separated list
-              paths = [p.strip() for p in raw.strip().splitlines() if p.strip()]
-
-          # Match any path containing /harness/ or /evals/ (or starting with them)
-          pattern = re.compile(r'(^|/)harness/|(^|/)evals/')
-          matched = [p for p in paths if pattern.search(p)]
-
-          if matched:
-              print("true")
-              for p in matched:
-                  print(f"  matched: {p}", file=sys.stderr)
-          else:
-              print("false")
-          PYEOF
-          )
-
-          echo "harness-changed=$HARNESS_CHANGED" >> "$GITHUB_OUTPUT"
-          echo "Harness/eval paths changed: $HARNESS_CHANGED"
-
-      # -----------------------------------------------------------------------
-      # Skip message when no AI Harness paths changed
-      # -----------------------------------------------------------------------
-      - name: Skip eval (no AI Harness paths changed)
-        if: steps.path-check.outputs.harness-changed == 'false'
-        run: |
-          echo "No AI Harness paths changed, skipping eval"
-          echo "Paths that would trigger eval: **/harness/**, **/evals/**"
-
-      # -----------------------------------------------------------------------
-      # Run eval subset when AI Harness paths are detected
-      # STUB — real eval invocation deferred to T-W4-xxx
-      # -----------------------------------------------------------------------
-      - name: Run eval subset (stub)
-        if: steps.path-check.outputs.harness-changed == 'true'
-        run: |
-          echo "Running eval subset"
-          echo "----------------------------------------"
-          echo "STUB: AI Harness / eval paths detected."
-          echo "Real eval execution will be wired in T-W4-xxx."
-          echo "Affected paths:"
-          python3 - <<'PYEOF'
-          import json, re
-
-          raw = '''${{ inputs.changed-paths }}'''
+          if [ -n "$CHANGED_PATHS_INPUT" ]; then
+            python3 - <<'PYEOF'
+          import json, os
+          raw = os.environ["CHANGED_PATHS_INPUT"]
           try:
               paths = json.loads(raw)
           except json.JSONDecodeError:
               paths = [p.strip() for p in raw.strip().splitlines() if p.strip()]
-
-          pattern = re.compile(r'(^|/)harness/|(^|/)evals/')
-          for p in paths:
-              if pattern.search(p):
-                  print(f"  -> {p}")
+          with open("changed_paths.txt", "w") as fh:
+              fh.write("\n".join(str(p) for p in paths) + "\n")
           PYEOF
-          echo "----------------------------------------"
-          echo "Eval subset completed (stub — exit 0)."
+          else
+            BASE_REF="${GITHUB_BASE_REF:-main}"
+            git fetch --quiet origin "$BASE_REF"
+            git diff --name-only "origin/${BASE_REF}...HEAD" > changed_paths.txt
+          fi
+          echo "Changed paths:"
+          sed 's/^/  /' changed_paths.txt || true
+
+      # -----------------------------------------------------------------------
+      # Resolver + golden sets: local when the caller IS velnor-evals; otherwise
+      # fetched from VelnorLabs/velnor-evals (needs evals-checkout-token — see
+      # the cross-repo token note in the header).
+      # -----------------------------------------------------------------------
+      - name: Checkout velnor-evals (cross-repo caller)
+        id: evals-remote
+        if: github.repository != 'VelnorLabs/velnor-evals'
+        continue-on-error: true
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          repository: VelnorLabs/velnor-evals
+          ref: main
+          path: .velnor-evals
+          token: ${{ secrets.evals-checkout-token || github.token }}
+          # Do not leave the read token in .velnor-evals/.git config where
+          # later steps (running evals code) could read it back.
+          persist-credentials: false
+
+      - name: Resolve evals dir (or degrade informationally)
+        id: evals
+        run: |
+          set -euo pipefail
+          if [ "${{ github.repository }}" = "VelnorLabs/velnor-evals" ]; then
+            echo "dir=${GITHUB_WORKSPACE}" >> "$GITHUB_OUTPUT"
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          elif [ -f ".velnor-evals/hotfix_subset_resolver.py" ]; then
+            echo "dir=${GITHUB_WORKSPACE}/.velnor-evals" >> "$GITHUB_OUTPUT"
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=eval/on-pr::Cannot fetch VelnorLabs/velnor-evals (resolver + golden sets). Pass secrets.evals-checkout-token from the caller (github.token cannot read other private repos — known org gap). Informational at Wave 3: eval skipped, job green."
+            {
+              echo "## eval/on-pr"
+              echo "SKIPPED — velnor-evals not reachable (missing evals-checkout-token)."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Set up Python
+        if: steps.evals.outputs.available == 'true'
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
+        with:
+          python-version: '3.12'
+
+      - name: Install runner deps (pyyaml only — recorded eval is offline)
+        if: steps.evals.outputs.available == 'true'
+        run: python3 -m pip install --quiet "pyyaml>=6.0.2,<7"
+
+      # -----------------------------------------------------------------------
+      # Q-16/Q-17 resolver: changed files → intersection class + subset tags
+      # -----------------------------------------------------------------------
+      - name: Resolve intersection + subset (Q-16/Q-17)
+        if: steps.evals.outputs.available == 'true'
+        id: resolve
+        env:
+          EVALS_DIR: ${{ steps.evals.outputs.dir }}
+        run: |
+          set -euo pipefail
+          python3 "${EVALS_DIR}/hotfix_subset_resolver.py" \
+            --repo "${{ github.repository }}" \
+            --files-from changed_paths.txt \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Skip eval (infra-only / tests-only PR)
+        if: steps.evals.outputs.available == 'true' && steps.resolve.outputs.run_eval != 'true'
+        run: |
+          echo "Intersection: ${{ steps.resolve.outputs.intersection }} — eval skipped (Q-17)."
+          {
+            echo "## eval/on-pr"
+            echo "- classification: \`${{ steps.resolve.outputs.intersection }}\`"
+            echo "- eval: **skipped** — no AI-Harness-intersecting production paths (CI time saved)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # -----------------------------------------------------------------------
+      # Subset eval — recorded data-only mode (deterministic, no model calls).
+      # Informational: warns on >2pp regression vs baselines; never blocks.
+      # -----------------------------------------------------------------------
+      - name: Run eval subset (recorded, informational)
+        if: steps.evals.outputs.available == 'true' && steps.resolve.outputs.run_eval == 'true'
+        env:
+          EVALS_DIR: ${{ steps.evals.outputs.dir }}
+          SUBSET_TAGS: ${{ steps.resolve.outputs.subset_tags }}
+        run: |
+          set -euo pipefail
+          cd "$EVALS_DIR"
+          START=$(date +%s)
+          python3 -m harnesses.subset_run --tags "$SUBSET_TAGS" | tee subset_eval.out
+          ELAPSED=$(( $(date +%s) - START ))
+          {
+            echo "## eval/on-pr"
+            echo "- classification: \`${{ steps.resolve.outputs.intersection }}\`"
+            echo "- subset tags: \`${SUBSET_TAGS}\`"
+            echo "- runtime: ${ELAPSED}s (budget: 5min)"
+            echo '```'
+            cat subset_eval.out
+            echo '```'
+            echo "_Informational at Wave 3 (Q-19): regressions warn, never block. Hard gate: T-W5-001._"
+          } >> "$GITHUB_STEP_SUMMARY"

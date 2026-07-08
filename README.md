@@ -42,6 +42,27 @@ jobs:
 That is the entire `ci.yml`. The shared template handles lint, unit tests,
 build, Trivy scan, cosign image signing, and OIDC smoke test.
 
+## On-PR eval subset (`_eval-on-pr.yml` · T-W3-020, replaces the T-W0-011 stub)
+
+Reusable Stage-1 eval workflow: the Q-16/Q-17 git-diff resolver
+(`velnor-evals/hotfix_subset_resolver.py`) classifies a PR's changed paths as
+`ai_harness_intersected` / `infra_only` / `mixed` and the recorded golden-subset
+eval (`velnor-evals harnesses/subset_run.py`, deterministic, no model calls)
+runs only for intersected (targeted tags) or mixed (full subset) — infra-only
+and tests-only PRs skip it entirely. **Informational at Wave 3** (Q-19):
+regressions >2pp below baseline produce `::warning::` annotations + a job
+summary, never a red check; hard-gating arrives with Wave-5 T-W5-001.
+
+```yaml
+jobs:
+  eval-on-pr:
+    uses: VelnorLabs/.github/.github/workflows/_eval-on-pr.yml@main
+    # callers OUTSIDE velnor-evals must also pass a read token for the
+    # private velnor-evals repo (github.token cannot read other repos):
+    # secrets:
+    #   evals-checkout-token: ${{ secrets.VELNOR_EVALS_READ_TOKEN }}
+```
+
 ## SDK bypass check (`_sdk-bypass-check.yml` · T-W0-020)
 
 A second reusable workflow that **blocks a PR if service code imports AWS, a
