@@ -43,10 +43,16 @@ on:
         type: boolean
         default: false
       go-version:
+        # Pinned to an exact patch (not the floating '1.25') so a security-fix
+        # toolchain is deterministic across all Go services. 1.25.12 resolves the
+        # Go stdlib CVE-2026-39822 (HIGH — os.Root symlink-following) that the
+        # Trivy gate flags on the built binary; the floating '1.25' had gone
+        # stale at 1.25.11 (< fixed 1.25.12). Bump this line when the next Go
+        # security patch lands. (LE-095)
         description: 'Go toolchain version (used when language=go)'
         required: false
         type: string
-        default: '1.25'
+        default: '1.25.12'
       python-version:
         description: 'Python version (used when language=python)'
         required: false
