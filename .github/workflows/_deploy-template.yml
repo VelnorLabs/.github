@@ -46,6 +46,16 @@ on:
         required: false
         type: string
         default: "velnor-dev-cluster"
+      health_check:
+        description: >-
+          Whether the service exposes an HTTP /healthz behind the saas ALB.
+          Set false for worker-type services (e.g. embed-worker) that have no
+          public route, so the healthz + e2e HTTP smoke tests are skipped (they
+          would 404 and fail Stage 3 for a queue-only worker). Deploy, ECS
+          stability wait, and Atlas migrations still run.
+        required: false
+        type: boolean
+        default: true
     # No `secrets:` block. AWS_ACCOUNT_ID is an environment-scoped VARIABLE
     # (vars.AWS_ACCOUNT_ID), not a secret. There is intentionally no AWS_REGION
     # secret either — the `secrets` context is NOT available in a workflow-level
@@ -187,6 +197,7 @@ jobs:
       # Step 6: Smoke tests — healthz + e2e chat round-trip stub
       # -----------------------------------------------------------------------
       - name: Smoke test — healthz
+        if: inputs.health_check
         run: |
           echo "Running healthz smoke test for ${{ inputs.service }}..."
           curl -f --retry 5 --retry-delay 5 --retry-connrefused \
@@ -194,6 +205,7 @@ jobs:
           echo "healthz OK"
 
       - name: Smoke test — e2e chat round-trip (stub)
+        if: inputs.health_check
         run: |
           echo "Running e2e chat round-trip stub for ${{ inputs.service }}..."
           # STUB: Real e2e test wired in T-W4-xxx; placeholder asserts endpoint reachable
