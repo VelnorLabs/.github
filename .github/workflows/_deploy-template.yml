@@ -182,9 +182,16 @@ jobs:
       # action: the third-party composite action makes the whole run
       # startup_failure (zero jobs, no REST-visible error) under this org's
       # GitHub Actions allow-policy. A plain run-step needs no action allowlist.
+      #
+      # PINNED (LE-078): atlas_migrate.sh runs `atlas migrate apply --skip-lock`.
+      # That flag was REMOVED in Atlas v0.31 (whose lock-backoff also had an
+      # Intn-overflow panic) and RE-ADDED in the v1.x line. Installing `latest`
+      # unpinned means a single upstream release that drops --skip-lock again
+      # would silently break every deploy's migration step. v1.2.0 is the current
+      # stable and supports --skip-lock — bump it deliberately, never implicitly.
       - name: Install Atlas CLI
         shell: bash
-        run: curl -sSf https://atlasgo.sh | CI=true sh
+        run: curl -sSf https://atlasgo.sh | ATLAS_VERSION=v1.2.0 CI=true sh
 
       - name: Run Atlas migrations (dev)
         env:
