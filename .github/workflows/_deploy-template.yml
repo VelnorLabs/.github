@@ -165,14 +165,48 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Step 4: Wait for ECS service stability
+      #
+      # LE-312 · the plain waiter's default window (40 × 15s = 10 min) FALSE-FAILS
+      # for services with Service Connect + an ALB target group (action-gate did
+      # it twice on 2026-07-26): draining the old task through the SC proxy AND
+      # the ALB pushes convergence just past 10 min, the waiter exits 255, and
+      # ECS completes the rollout on its own minutes later. A red that means
+      # "slow" erodes trust in a red that means "broken". On timeout, consult
+      # ECS's own deployment state machine: COMPLETED => success; IN_PROGRESS =>
+      # one more waiter round (~20 min ceiling total); anything else (FAILED,
+      # circuit-breaker) => fail loud with the recent service events.
       # -----------------------------------------------------------------------
       - name: Wait for ECS service stability
         run: |
-          echo "Waiting for velnor-${{ inputs.service }} to stabilize on ${{ env.ECS_CLUSTER }}..."
-          aws ecs wait services-stable \
-            --cluster "${{ env.ECS_CLUSTER }}" \
-            --services "velnor-${{ inputs.service }}"
-          echo "ECS service is stable."
+          cluster="${{ env.ECS_CLUSTER }}"
+          service="velnor-${{ inputs.service }}"
+          rollout_state() {
+            aws ecs describe-services --cluster "$cluster" --services "$service" \
+              --query 'services[0].deployments[0].rolloutState' --output text
+          }
+          echo "Waiting for $service to stabilize on $cluster..."
+          if aws ecs wait services-stable --cluster "$cluster" --services "$service"; then
+            echo "ECS service is stable."
+            exit 0
+          fi
+          state="$(rollout_state)"
+          echo "First stability wait timed out; rolloutState=$state"
+          case "$state" in
+            COMPLETED)
+              echo "Rollout completed despite the waiter timeout (slow SC/ALB drain, LE-312)."
+              ;;
+            IN_PROGRESS)
+              echo "Rollout still converging — waiting one more round..."
+              aws ecs wait services-stable --cluster "$cluster" --services "$service"
+              echo "ECS service is stable (second round)."
+              ;;
+            *)
+              echo "Rollout state '$state' — genuine deploy failure. Recent service events:"
+              aws ecs describe-services --cluster "$cluster" --services "$service" \
+                --query 'services[0].events[0:5].message' --output json
+              exit 1
+              ;;
+          esac
 
       # -----------------------------------------------------------------------
       # Step 5: Run Atlas migrations (dev)
