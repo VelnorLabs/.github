@@ -180,10 +180,56 @@ jobs:
         run: |
           cluster="${{ env.ECS_CLUSTER }}"
           service="velnor-${{ inputs.service }}"
+          repo="velnor-${{ inputs.service }}"
+          tag="${{ inputs.image_tag }}"
+
           rollout_state() {
             aws ecs describe-services --cluster "$cluster" --services "$service" \
               --query 'services[0].deployments[0].rolloutState' --output text
           }
+
+          # diagnose prints everything needed to tell WHY a deploy failed, and is
+          # reached from EVERY failure exit (LE-322). The previous version only
+          # dumped events on the catch-all branch, while the branch most likely to
+          # be taken on a real failure — IN_PROGRESS, then a second timeout — ran a
+          # bare `aws ecs wait` as its last command. Under Actions' default
+          # `bash -e` that killed the step on the waiter's own exit code, so the
+          # diagnostics never ran: a genuine failure produced two identical
+          # "Max attempts exceeded" lines and nothing else.
+          diagnose() {
+            echo "::group::Deploy failure diagnostics"
+            echo "--- rolloutState ---"
+            aws ecs describe-services --cluster "$cluster" --services "$service" \
+              --query 'services[0].deployments[0].{state:rolloutState,reason:rolloutStateReason,desired:desiredCount,running:runningCount,pending:pendingCount,failed:failedTasks}' \
+              --output json || true
+            # An ABSENT IMAGE is a common cause and is invisible in the waiter's
+            # own error. Naming it directly turns a 20-minute diagnosis into a
+            # 5-second one — this is exactly how the admin-api failure that
+            # motivated LE-322 was eventually root-caused, by hand, afterwards.
+            echo "--- image $repo:$tag present in ECR? ---"
+            if aws ecr describe-images --repository-name "$repo" --image-ids "imageTag=$tag" \
+                 --query 'imageDetails[0].imagePushedAt' --output text 2>/dev/null; then
+              echo "image found"
+            else
+              echo "IMAGE NOT FOUND IN ECR — the task cannot be pulled."
+              echo "Most likely the CI build/push stage failed or is still running."
+            fi
+            echo "--- 10 most recent service events ---"
+            aws ecs describe-services --cluster "$cluster" --services "$service" \
+              --query 'services[0].events[0:10].message' --output json || true
+            echo "--- most recent stopped task ---"
+            task="$(aws ecs list-tasks --cluster "$cluster" --service-name "$service" \
+              --desired-status STOPPED --max-items 1 --query 'taskArns[0]' --output text 2>/dev/null)"
+            if [ -n "$task" ] && [ "$task" != "None" ]; then
+              aws ecs describe-tasks --cluster "$cluster" --tasks "$task" \
+                --query 'tasks[0].{stoppedReason:stoppedReason,containers:containers[].{name:name,exitCode:exitCode,reason:reason}}' \
+                --output json || true
+            else
+              echo "(no stopped task to report)"
+            fi
+            echo "::endgroup::"
+          }
+
           echo "Waiting for $service to stabilize on $cluster..."
           if aws ecs wait services-stable --cluster "$cluster" --services "$service"; then
             echo "ECS service is stable."
@@ -197,13 +243,21 @@ jobs:
               ;;
             IN_PROGRESS)
               echo "Rollout still converging — waiting one more round..."
-              aws ecs wait services-stable --cluster "$cluster" --services "$service"
-              echo "ECS service is stable (second round)."
+              # Guarded, not bare: a second timeout must reach diagnose() rather
+              # than terminating the step on the waiter's exit code.
+              if aws ecs wait services-stable --cluster "$cluster" --services "$service"; then
+                echo "ECS service is stable (second round)."
+              else
+                echo "Second stability wait ALSO timed out — this is a genuine failure."
+                echo "Note the ~20 min ceiling is now exhausted; see LE-320 on why a"
+                echo "1-task rollout on this cluster takes ~12 min in the first place."
+                diagnose
+                exit 1
+              fi
               ;;
             *)
-              echo "Rollout state '$state' — genuine deploy failure. Recent service events:"
-              aws ecs describe-services --cluster "$cluster" --services "$service" \
-                --query 'services[0].events[0:5].message' --output json
+              echo "Rollout state '$state' — genuine deploy failure."
+              diagnose
               exit 1
               ;;
           esac
