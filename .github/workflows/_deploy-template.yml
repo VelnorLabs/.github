@@ -109,7 +109,10 @@ jobs:
       - name: Checkout calling repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
-      # Checkout velnor-iac to a subdirectory so atlas_migrate.sh is available.
+      # Checkout velnor-iac to a subdirectory so the tofu init/apply steps below
+      # can work out of accounts/dev/ecs/<service>. (It used to say "so
+      # atlas_migrate.sh is available" — that script and its step are gone,
+      # LE-372, but this checkout is still load-bearing for the deploy itself.)
       # NOTE: github.token is scoped to the *calling* repo only and cannot clone
       # a separate private repo (returns "Not Found"). velnor-iac is a different
       # private repo, so this needs a token with contents:read on velnor-iac.
