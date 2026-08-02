@@ -5,7 +5,8 @@
 # Requires manual approval via GitHub Environment "production" before running.
 #
 # Stage 6 flow:
-#   OIDC → gate check (staging green) → AppConfig rollout → Atlas pre-cut →
+#   OIDC → gate check (staging green) → AppConfig rollout
+#        → [Atlas pre-cut: NOT WIRED, fails closed — LE-372] →
 #   monitor rollout → CloudWatch deployment event
 #
 # Per Q-7: AppConfig tenant rollout at V1; blue/green canary deferred to V1.5+
@@ -79,7 +80,10 @@ jobs:
       - name: Checkout calling repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
-      # Checkout velnor-iac to a subdirectory so atlas_migrate.sh is available
+      # Checkout velnor-iac. NOTE (LE-372): this existed ONLY to fetch
+      # scripts/atlas_migrate.sh, which is now deleted, so nothing in this
+      # workflow reads it today. Kept because wiring the real per-tenant rollout
+      # will need this repo again; delete it if that never happens.
       - name: Checkout velnor-iac
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
@@ -179,23 +183,32 @@ jobs:
           echo "appconfig_deployment_num=$DEPLOYMENT_NUM" >> "$GITHUB_OUTPUT"
 
       # -----------------------------------------------------------------------
-      # Step 4: Atlas pre-cut — run migrations against prod (with --check-destructive)
-      # Runs a destructive-change check before applying, then applies.
+      # Step 4: Atlas pre-cut — NOT WIRED, FAILS CLOSED (LE-372)
       # -----------------------------------------------------------------------
-      - name: Atlas pre-cut — destructive change check (prod)
+      # These two steps called velnor-iac/scripts/atlas_migrate.sh, which is
+      # DELETED. It had been marked "DEPRECATED — Do not use" since LE-099 and
+      # could never have worked: MIGRATIONS_DIR defaults to a directory absent
+      # from velnor-iac, it is not vertical-aware (DEC-0064), and it uses a
+      # static-password DSN the DEC-0061 RDS Proxy rejects.
+      #
+      # THE SAFETY PROPERTY THIS OWED IS PRESERVED RATHER THAN DROPPED. The
+      # --check-destructive gate was the only thing standing between a prod cut
+      # and an unreviewed DROP/TRUNCATE/ALTER TYPE. Deleting it silently would
+      # remove a guarantee; leaving a call to a missing file would read as an
+      # oversight. So this fails closed, loudly, and says what must replace it.
+      # Production does not exist yet, so nothing is blocked today.
+      #
+      # TO WIRE IT, BOTH HALVES ARE OWED — do not restore only the apply:
+      #   1. a destructive-change gate over the pending migration set, and
+      #   2. the apply-registry Fargate rollout (velnor-iac
+      #      accounts/dev/codebuild/atlas_tenant_rollout.tf, prod equivalent),
+      # with promotion gated on both.
+      - name: Atlas pre-cut — destructive change check + apply (prod)
         run: |
-          set -euo pipefail
-          chmod +x "${{ env.IAC_REPO_PATH }}/scripts/atlas_migrate.sh"
-          echo "Running Atlas destructive-change check against prod..."
-          "${{ env.IAC_REPO_PATH }}/scripts/atlas_migrate.sh" prod --check-destructive
-          echo "Destructive check passed."
-
-      - name: Atlas pre-cut — apply migrations (prod)
-        run: |
-          set -euo pipefail
-          echo "Applying Atlas migrations against prod..."
-          "${{ env.IAC_REPO_PATH }}/scripts/atlas_migrate.sh" prod
-          echo "Atlas migrations applied to prod."
+          echo "::error::Production migrations are not wired. atlas_migrate.sh was deleted (LE-372)." \
+               "A prod cut owes BOTH a destructive-change gate AND the apply-registry rollout." \
+               "Failing closed rather than cutting prod against an unmigrated, unchecked database."
+          exit 1
 
       # -----------------------------------------------------------------------
       # Step 5: Monitor AppConfig rollout until COMPLETE or ROLLED_BACK

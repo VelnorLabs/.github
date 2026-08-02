@@ -51,8 +51,9 @@ on:
           Whether the service exposes an HTTP /healthz behind the saas ALB.
           Set false for worker-type services (e.g. embed-worker) that have no
           public route, so the healthz + e2e HTTP smoke tests are skipped (they
-          would 404 and fail Stage 3 for a queue-only worker). Deploy, ECS
-          stability wait, and Atlas migrations still run.
+          would 404 and fail Stage 3 for a queue-only worker). The deploy and the
+          ECS stability wait still run. (This used to say "and Atlas migrations
+          still run" — they did not, and the step is now gone; see LE-372.)
         required: false
         type: boolean
         default: true
@@ -85,7 +86,10 @@ env:
 # ---------------------------------------------------------------------------
 jobs:
   deploy-dev:
-    name: Stage 3 · tofu apply → ECS update → atlas migrate → smoke
+    # "atlas migrate" deliberately dropped from this name (LE-372): the step it
+    # referred to no-op'd on every deploy and has been removed. A stage name is
+    # read as a claim about what the stage does.
+    name: Stage 3 · tofu apply → ECS update → smoke
     runs-on: ubuntu-latest
     # Two gates, both required:
     #   1. AWS_ACCOUNT_ID set (account wired).
@@ -263,31 +267,36 @@ jobs:
           esac
 
       # -----------------------------------------------------------------------
-      # Step 5: Run Atlas migrations (dev)
+      # Step 5: (removed) Atlas migrations — LE-372
       # -----------------------------------------------------------------------
-      # atlas_migrate.sh requires the Atlas CLI on PATH; install it first.
-      # Install via the official script rather than the ariga/setup-atlas
-      # action: the third-party composite action makes the whole run
-      # startup_failure (zero jobs, no REST-visible error) under this org's
-      # GitHub Actions allow-policy. A plain run-step needs no action allowlist.
+      # This step ran `velnor-iac/scripts/atlas_migrate.sh dev` and installed the
+      # Atlas CLI to support it. Both are gone, and NOTHING REPLACES THEM HERE:
+      # this pipeline no longer runs migrations at all.
       #
-      # PINNED (LE-078): atlas_migrate.sh runs `atlas migrate apply --skip-lock`.
-      # That flag was REMOVED in Atlas v0.31 (whose lock-backoff also had an
-      # Intn-overflow panic) and RE-ADDED in the v1.x line. Installing `latest`
-      # unpinned means a single upstream release that drops --skip-lock again
-      # would silently break every deploy's migration step. v1.2.0 is the current
-      # stable and supports --skip-lock — bump it deliberately, never implicitly.
-      - name: Install Atlas CLI
-        shell: bash
-        run: curl -sSf https://atlasgo.sh | ATLAS_VERSION=v1.2.0 CI=true sh
-
-      - name: Run Atlas migrations (dev)
-        env:
-          ENV: dev
-        run: |
-          chmod +x "${{ env.IAC_REPO_PATH }}/scripts/atlas_migrate.sh"
-          "${{ env.IAC_REPO_PATH }}/scripts/atlas_migrate.sh" dev
-
+      # IT NEVER DID. atlas_migrate.sh defaults MIGRATIONS_DIR to
+      # velnor-iac/db/migrations, a directory that does not exist in that repo —
+      # the catalogs live in velnor-plane-api/migrations/<vertical>/. So the step
+      # printed "No migrations directory present ... Skipping atlas apply
+      # (no-op)" and exited 0 on every deploy of every service, while a step
+      # named "Run Atlas migrations (dev)" went green. Verified on velnor-user-api
+      # run 30647594122. The script's own header has said DEPRECATED — Do not use
+      # since LE-099; what nobody noticed is that this template called it anyway.
+      #
+      # WORSE THAN DEAD WEIGHT, which is why it is deleted rather than left: the
+      # missing directory was the ONLY thing preventing it from running for real.
+      # This step had no continue-on-error, and the script exits 1 on any tenant
+      # failure — so the day someone added velnor-iac/db/migrations, every deploy
+      # in the org would have started attempting live per-tenant applies with a
+      # static-password DSN the DEC-0061 RDS Proxy rejects, no vertical-awareness
+      # (DEC-0064), and an unnormalized velnor_t_${slug} that yields
+      # velnor_t_gym-sb for a hyphenated tenant (LE-310/LE-324) — and gone red.
+      #
+      # THE REAL PER-TENANT ROLLOUT is the apply-registry Fargate task in
+      # velnor-iac accounts/dev/codebuild/atlas_tenant_rollout.tf, which reads the
+      # tenant→vertical mapping from velnor.tenants and mints an RDS IAM token at
+      # runtime. It is deliberately NOT wired here: a per-service deploy should
+      # not trigger a fleet-wide per-tenant migration. Run it on demand — see that
+      # file's header.
       # -----------------------------------------------------------------------
       # Step 6: Smoke tests — healthz (INFORMATIONAL) + e2e chat round-trip stub
       #
