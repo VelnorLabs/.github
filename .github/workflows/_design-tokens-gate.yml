@@ -1,0 +1,130 @@
+# ---------------------------------------------------------------------------
+# _design-tokens-gate.yml · T-W2-037
+#
+# The no-hardcoded-styles gate — the UI analog of _schema-bypass-check.yml.
+# Tokens are the only source of visual truth (design-contract-standard §1),
+# and this is what makes that enforceable rather than aspirational.
+#
+# Called via workflow_call from client-repo CI pipelines:
+#
+#   jobs:
+#     design-tokens-gate:
+#       uses: VelnorLabs/.github/.github/workflows/_design-tokens-gate.yml@main
+#       with:
+#         scan_paths: "src app"
+#
+# What it blocks in the scanned paths:
+#   - raw hex colours          #3965F2, #fff
+#   - raw pixel values         12px, 0.5px  (in style positions)
+#   - raw font stacks          font-family: Inter, sans-serif
+#
+# What passes:
+#   - var(--velnor-*)                     web, CSS custom properties
+#   - Tailwind preset classes             bg-bg-surface, text-text-primary
+#   - velnorColor / velnorSpace / …       React Native, tokens.ts
+#   - arbitrary values referencing a var  min-h-[var(--velnor-size-tap-ios)]
+#
+# Deliberately NOT scanned (edge case in the brief): the token package's own
+# outputs and any vendored copy of them. A file whose job is to DEFINE the
+# hex values cannot be in violation for containing them.
+#
+# Invariants:
+#   - Pinned action SHAs (Invariant §4)
+#   - contents: read only; no cloud service, no token, no network egress
+# ---------------------------------------------------------------------------
+
+on:
+  workflow_call:
+    inputs:
+      scan_paths:
+        description: "Space-separated source roots to scan"
+        required: false
+        type: string
+        default: "src"
+      file_globs:
+        description: "Space-separated file extensions to scan"
+        required: false
+        type: string
+        default: "ts tsx js jsx css"
+
+jobs:
+  design-tokens-gate:
+    name: Design tokens gate (no hardcoded styles)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Scan for hardcoded style values
+        env:
+          SCAN_PATHS: ${{ inputs.scan_paths }}
+          FILE_GLOBS: ${{ inputs.file_globs }}
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          # Paths that legitimately contain literal values: the generated token
+          # outputs themselves, vendored copies, and lockfiles.
+          EXCLUDE_RE='(^|/)(design-tokens|vendor|node_modules|dist|build|storybook-static|graphify-out|visual-regression)/'
+
+          violations=0
+          report=""
+
+          scan() {
+            local label="$1" pattern="$2" allow="$3"
+            for root in $SCAN_PATHS; do
+              [ -d "$root" ] || continue
+              for ext in $FILE_GLOBS; do
+                while IFS= read -r -d '' file; do
+                  case "$file" in
+                    *.d.ts) continue ;;
+                  esac
+                  if printf '%s' "$file" | grep -qE "$EXCLUDE_RE"; then continue; fi
+
+                  # Strip BOTH comment styles first. A doc comment that says
+                  # `"44px" -> 44` is documentation, not a hardcoded style, and
+                  # a gate that flags its own explanation trains people to
+                  # ignore it. Line numbers are preserved so the report points
+                  # at the real line.
+                  matches=$(perl -0777 -pe 's{/\*.*?\*/}{$&=~s/[^\n]//gr}gse; s{//[^\n]*}{}g' "$file" \
+                    | grep -nE "$pattern" \
+                    | { [ -n "$allow" ] && grep -vE "$allow" || cat; } || true)
+
+                  if [ -n "$matches" ]; then
+                    while IFS= read -r line; do
+                      report="${report}  ${label}  ${file}:${line}"$'\n'
+                      violations=$((violations + 1))
+                    done <<< "$matches"
+                  fi
+                done < <(find "$root" -type f -name "*.${ext}" -print0)
+              done
+            done
+          }
+
+          # 1. Raw hex colours. Nothing legitimate needs one outside the token package.
+          scan "HEX  " '#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?\b' ''
+
+          # 2. Raw pixel values — allowed only inside a var() reference, which is
+          #    how a token-derived length is written (min-h-[var(--velnor-...)]).
+          scan "PX   " '[0-9]+(\.[0-9]+)?px' 'var\(--velnor-'
+
+          # 3. Raw font stacks.
+          scan "FONT " 'font-family[[:space:]]*:[[:space:]]*[^v)]' 'var\(--velnor-|velnorFont'
+
+          if [ "$violations" -gt 0 ]; then
+            echo "::error::design tokens gate: ${violations} hardcoded style value(s) found."
+            echo ""
+            echo "Tokens are the only source of visual truth (design-contract-standard §1)."
+            echo "Replace each literal with a token reference:"
+            echo "  web    var(--velnor-bg-surface)  or a preset class like bg-bg-surface"
+            echo "  mobile velnorColor[...], velnorSpace[...], velnorType(...)"
+            echo ""
+            echo "If a value genuinely has no token, add it to velnor.tokens.json in"
+            echo "velnor-design-tokens and rebuild — do not inline it here."
+            echo ""
+            printf '%s' "$report"
+            exit 1
+          fi
+
+          echo "design tokens gate: clean — no hardcoded hex, px or font stacks in ${SCAN_PATHS}."
