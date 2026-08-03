@@ -51,8 +51,9 @@ on:
           Whether the service exposes an HTTP /healthz behind the saas ALB.
           Set false for worker-type services (e.g. embed-worker) that have no
           public route, so the healthz + e2e HTTP smoke tests are skipped (they
-          would 404 and fail Stage 3 for a queue-only worker). Deploy, ECS
-          stability wait, and Atlas migrations still run.
+          would 404 and fail Stage 3 for a queue-only worker). The deploy and the
+          ECS stability wait still run. (This used to say "and Atlas migrations
+          still run" — they did not, and the step is now gone; see LE-372.)
         required: false
         type: boolean
         default: true
@@ -85,7 +86,10 @@ env:
 # ---------------------------------------------------------------------------
 jobs:
   deploy-dev:
-    name: Stage 3 · tofu apply → ECS update → atlas migrate → smoke
+    # "atlas migrate" deliberately dropped from this name (LE-372): the step it
+    # referred to no-op'd on every deploy and has been removed. A stage name is
+    # read as a claim about what the stage does.
+    name: Stage 3 · tofu apply → ECS update → smoke
     runs-on: ubuntu-latest
     # Two gates, both required:
     #   1. AWS_ACCOUNT_ID set (account wired).
@@ -105,7 +109,10 @@ jobs:
       - name: Checkout calling repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
-      # Checkout velnor-iac to a subdirectory so atlas_migrate.sh is available.
+      # Checkout velnor-iac to a subdirectory so the tofu init/apply steps below
+      # can work out of accounts/dev/ecs/<service>. (It used to say "so
+      # atlas_migrate.sh is available" — that script and its step are gone,
+      # LE-372, but this checkout is still load-bearing for the deploy itself.)
       # NOTE: github.token is scoped to the *calling* repo only and cannot clone
       # a separate private repo (returns "Not Found"). velnor-iac is a different
       # private repo, so this needs a token with contents:read on velnor-iac.
@@ -165,34 +172,134 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Step 4: Wait for ECS service stability
+      #
+      # LE-312 · the plain waiter's default window (40 × 15s = 10 min) FALSE-FAILS
+      # for services with Service Connect + an ALB target group (action-gate did
+      # it twice on 2026-07-26): draining the old task through the SC proxy AND
+      # the ALB pushes convergence just past 10 min, the waiter exits 255, and
+      # ECS completes the rollout on its own minutes later. A red that means
+      # "slow" erodes trust in a red that means "broken". On timeout, consult
+      # ECS's own deployment state machine: COMPLETED => success; IN_PROGRESS =>
+      # one more waiter round (~20 min ceiling total); anything else (FAILED,
+      # circuit-breaker) => fail loud with the recent service events.
       # -----------------------------------------------------------------------
       - name: Wait for ECS service stability
         run: |
-          echo "Waiting for velnor-${{ inputs.service }} to stabilize on ${{ env.ECS_CLUSTER }}..."
-          aws ecs wait services-stable \
-            --cluster "${{ env.ECS_CLUSTER }}" \
-            --services "velnor-${{ inputs.service }}"
-          echo "ECS service is stable."
+          cluster="${{ env.ECS_CLUSTER }}"
+          service="velnor-${{ inputs.service }}"
+          repo="velnor-${{ inputs.service }}"
+          tag="${{ inputs.image_tag }}"
+
+          rollout_state() {
+            aws ecs describe-services --cluster "$cluster" --services "$service" \
+              --query 'services[0].deployments[0].rolloutState' --output text
+          }
+
+          # diagnose prints everything needed to tell WHY a deploy failed, and is
+          # reached from EVERY failure exit (LE-322). The previous version only
+          # dumped events on the catch-all branch, while the branch most likely to
+          # be taken on a real failure — IN_PROGRESS, then a second timeout — ran a
+          # bare `aws ecs wait` as its last command. Under Actions' default
+          # `bash -e` that killed the step on the waiter's own exit code, so the
+          # diagnostics never ran: a genuine failure produced two identical
+          # "Max attempts exceeded" lines and nothing else.
+          diagnose() {
+            echo "::group::Deploy failure diagnostics"
+            echo "--- rolloutState ---"
+            aws ecs describe-services --cluster "$cluster" --services "$service" \
+              --query 'services[0].deployments[0].{state:rolloutState,reason:rolloutStateReason,desired:desiredCount,running:runningCount,pending:pendingCount,failed:failedTasks}' \
+              --output json || true
+            # An ABSENT IMAGE is a common cause and is invisible in the waiter's
+            # own error. Naming it directly turns a 20-minute diagnosis into a
+            # 5-second one — this is exactly how the admin-api failure that
+            # motivated LE-322 was eventually root-caused, by hand, afterwards.
+            echo "--- image $repo:$tag present in ECR? ---"
+            if aws ecr describe-images --repository-name "$repo" --image-ids "imageTag=$tag" \
+                 --query 'imageDetails[0].imagePushedAt' --output text 2>/dev/null; then
+              echo "image found"
+            else
+              echo "IMAGE NOT FOUND IN ECR — the task cannot be pulled."
+              echo "Most likely the CI build/push stage failed or is still running."
+            fi
+            echo "--- 10 most recent service events ---"
+            aws ecs describe-services --cluster "$cluster" --services "$service" \
+              --query 'services[0].events[0:10].message' --output json || true
+            echo "--- most recent stopped task ---"
+            task="$(aws ecs list-tasks --cluster "$cluster" --service-name "$service" \
+              --desired-status STOPPED --max-items 1 --query 'taskArns[0]' --output text 2>/dev/null)"
+            if [ -n "$task" ] && [ "$task" != "None" ]; then
+              aws ecs describe-tasks --cluster "$cluster" --tasks "$task" \
+                --query 'tasks[0].{stoppedReason:stoppedReason,containers:containers[].{name:name,exitCode:exitCode,reason:reason}}' \
+                --output json || true
+            else
+              echo "(no stopped task to report)"
+            fi
+            echo "::endgroup::"
+          }
+
+          echo "Waiting for $service to stabilize on $cluster..."
+          if aws ecs wait services-stable --cluster "$cluster" --services "$service"; then
+            echo "ECS service is stable."
+            exit 0
+          fi
+          state="$(rollout_state)"
+          echo "First stability wait timed out; rolloutState=$state"
+          case "$state" in
+            COMPLETED)
+              echo "Rollout completed despite the waiter timeout (slow SC/ALB drain, LE-312)."
+              ;;
+            IN_PROGRESS)
+              echo "Rollout still converging — waiting one more round..."
+              # Guarded, not bare: a second timeout must reach diagnose() rather
+              # than terminating the step on the waiter's exit code.
+              if aws ecs wait services-stable --cluster "$cluster" --services "$service"; then
+                echo "ECS service is stable (second round)."
+              else
+                echo "Second stability wait ALSO timed out — this is a genuine failure."
+                echo "Note the ~20 min ceiling is now exhausted; see LE-320 on why a"
+                echo "1-task rollout on this cluster takes ~12 min in the first place."
+                diagnose
+                exit 1
+              fi
+              ;;
+            *)
+              echo "Rollout state '$state' — genuine deploy failure."
+              diagnose
+              exit 1
+              ;;
+          esac
 
       # -----------------------------------------------------------------------
-      # Step 5: Run Atlas migrations (dev)
+      # Step 5: (removed) Atlas migrations — LE-372
       # -----------------------------------------------------------------------
-      # atlas_migrate.sh requires the Atlas CLI on PATH; install it first.
-      # Install via the official script rather than the ariga/setup-atlas
-      # action: the third-party composite action makes the whole run
-      # startup_failure (zero jobs, no REST-visible error) under this org's
-      # GitHub Actions allow-policy. A plain run-step needs no action allowlist.
-      - name: Install Atlas CLI
-        shell: bash
-        run: curl -sSf https://atlasgo.sh | CI=true sh
-
-      - name: Run Atlas migrations (dev)
-        env:
-          ENV: dev
-        run: |
-          chmod +x "${{ env.IAC_REPO_PATH }}/scripts/atlas_migrate.sh"
-          "${{ env.IAC_REPO_PATH }}/scripts/atlas_migrate.sh" dev
-
+      # This step ran `velnor-iac/scripts/atlas_migrate.sh dev` and installed the
+      # Atlas CLI to support it. Both are gone, and NOTHING REPLACES THEM HERE:
+      # this pipeline no longer runs migrations at all.
+      #
+      # IT NEVER DID. atlas_migrate.sh defaults MIGRATIONS_DIR to
+      # velnor-iac/db/migrations, a directory that does not exist in that repo —
+      # the catalogs live in velnor-plane-api/migrations/<vertical>/. So the step
+      # printed "No migrations directory present ... Skipping atlas apply
+      # (no-op)" and exited 0 on every deploy of every service, while a step
+      # named "Run Atlas migrations (dev)" went green. Verified on velnor-user-api
+      # run 30647594122. The script's own header has said DEPRECATED — Do not use
+      # since LE-099; what nobody noticed is that this template called it anyway.
+      #
+      # WORSE THAN DEAD WEIGHT, which is why it is deleted rather than left: the
+      # missing directory was the ONLY thing preventing it from running for real.
+      # This step had no continue-on-error, and the script exits 1 on any tenant
+      # failure — so the day someone added velnor-iac/db/migrations, every deploy
+      # in the org would have started attempting live per-tenant applies with a
+      # static-password DSN the DEC-0061 RDS Proxy rejects, no vertical-awareness
+      # (DEC-0064), and an unnormalized velnor_t_${slug} that yields
+      # velnor_t_gym-sb for a hyphenated tenant (LE-310/LE-324) — and gone red.
+      #
+      # THE REAL PER-TENANT ROLLOUT is the apply-registry Fargate task in
+      # velnor-iac accounts/dev/codebuild/atlas_tenant_rollout.tf, which reads the
+      # tenant→vertical mapping from velnor.tenants and mints an RDS IAM token at
+      # runtime. It is deliberately NOT wired here: a per-service deploy should
+      # not trigger a fleet-wide per-tenant migration. Run it on demand — see that
+      # file's header.
       # -----------------------------------------------------------------------
       # Step 6: Smoke tests — healthz (INFORMATIONAL) + e2e chat round-trip stub
       #

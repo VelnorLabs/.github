@@ -5,7 +5,8 @@
 # Requires approve_qa == 'true' to proceed (hard gate — job skips otherwise).
 #
 # Stage 5 flow:
-#   OIDC → ECS update (staging) → Atlas migrate (staging) → QA plan trigger → deployment status
+#   OIDC → ECS update (staging) → [migrations: NOT WIRED, fails closed — LE-372]
+#        → QA plan trigger → deployment status
 #
 # Environment: staging
 #   Requires environment approval configured in GitHub repository settings
@@ -65,7 +66,10 @@ jobs:
       - name: Checkout calling repo
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
-      # Checkout velnor-iac to a subdirectory so atlas_migrate.sh is available
+      # Checkout velnor-iac. NOTE (LE-372): this existed ONLY to fetch
+      # scripts/atlas_migrate.sh, which is now deleted, so nothing in this
+      # workflow reads it today. Kept because wiring the real per-tenant rollout
+      # will need this repo again; delete it if that never happens.
       - name: Checkout velnor-iac
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
@@ -141,14 +145,27 @@ jobs:
           echo "ECS service is stable on staging."
 
       # -----------------------------------------------------------------------
-      # Step 3: Atlas migrations for staging
+      # Step 3: Atlas migrations for staging — NOT WIRED, FAILS CLOSED (LE-372)
       # -----------------------------------------------------------------------
+      # This called velnor-iac/scripts/atlas_migrate.sh, which is DELETED. That
+      # script had been marked "DEPRECATED — Do not use" since LE-099 and could
+      # never have worked here: it defaults MIGRATIONS_DIR to a directory that
+      # does not exist in velnor-iac, it is not vertical-aware (DEC-0064), and it
+      # uses a static-password DSN the DEC-0061 RDS Proxy rejects.
+      #
+      # FAILING CLOSED IS DELIBERATE. Promoting to staging without applying
+      # migrations is worse than not promoting, so this does not silently skip.
+      # Staging does not exist yet, so nothing is blocked today.
+      #
+      # TO WIRE IT: run the apply-registry Fargate task (the blessed per-tenant
+      # rollout — velnor-iac accounts/dev/codebuild/atlas_tenant_rollout.tf, which
+      # needs a staging equivalent) and gate promotion on its exit status.
       - name: Run Atlas migrations (staging)
-        env:
-          ENV: staging
         run: |
-          chmod +x "${{ env.IAC_REPO_PATH }}/scripts/atlas_migrate.sh"
-          "${{ env.IAC_REPO_PATH }}/scripts/atlas_migrate.sh" staging
+          echo "::error::Staging migrations are not wired. atlas_migrate.sh was deleted (LE-372);" \
+               "promotion must run the apply-registry Fargate rollout instead. Failing closed" \
+               "rather than promoting a service against an unmigrated database."
+          exit 1
 
       # -----------------------------------------------------------------------
       # Step 4: QA test plan trigger (stub)
