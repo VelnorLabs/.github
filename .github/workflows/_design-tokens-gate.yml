@@ -46,6 +46,15 @@ on:
         required: false
         type: string
         default: "ts tsx js jsx css"
+      token_prefix:
+        description: >-
+          Custom-property prefix that marks a value as token-derived, WITHOUT
+          the leading dashes. `velnor` for the tenant app; `admin` for the
+          vendor console, which has its own token set on purpose (dark chrome,
+          different trust posture) and must not reference tenant tokens.
+        required: false
+        type: string
+        default: "velnor"
 
 jobs:
   design-tokens-gate:
@@ -60,6 +69,7 @@ jobs:
         env:
           SCAN_PATHS: ${{ inputs.scan_paths }}
           FILE_GLOBS: ${{ inputs.file_globs }}
+          TOKEN_PREFIX: ${{ inputs.token_prefix }}
         shell: bash
         run: |
           set -uo pipefail
@@ -105,23 +115,31 @@ jobs:
           # 1. Raw hex colours. Nothing legitimate needs one outside the token package.
           scan "HEX  " '#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?\b' ''
 
+          # The prefix that marks a value as token-derived. Parameterised
+          # because there is more than one legitimate token set: the vendor
+          # console uses --admin-* by design and must never reference a tenant
+          # token. Hardcoding --velnor- here made every `1px solid
+          # var(--admin-border-field)` in velnor-admin-web read as a raw pixel.
+          ALLOW_VAR="var\\(--${TOKEN_PREFIX}-"
+
           # 2. Raw pixel values — allowed only inside a var() reference, which is
-          #    how a token-derived length is written (min-h-[var(--velnor-...)]).
-          scan "PX   " '[0-9]+(\.[0-9]+)?px' 'var\(--velnor-'
+          #    how a token-derived length is written (min-h-[var(--<prefix>-...)]).
+          scan "PX   " '[0-9]+(\.[0-9]+)?px' "$ALLOW_VAR"
 
           # 3. Raw font stacks.
-          scan "FONT " 'font-family[[:space:]]*:[[:space:]]*[^v)]' 'var\(--velnor-|velnorFont'
+          scan "FONT " 'font-family[[:space:]]*:[[:space:]]*[^v)]' "${ALLOW_VAR}|velnorFont"
 
           if [ "$violations" -gt 0 ]; then
             echo "::error::design tokens gate: ${violations} hardcoded style value(s) found."
             echo ""
             echo "Tokens are the only source of visual truth (design-contract-standard §1)."
             echo "Replace each literal with a token reference:"
-            echo "  web    var(--velnor-bg-surface)  or a preset class like bg-bg-surface"
+            echo "  web    var(--${TOKEN_PREFIX}-bg-surface)  or a preset class like bg-bg-surface"
             echo "  mobile velnorColor[...], velnorSpace[...], velnorType(...)"
+            echo "  admin  var(--admin-…) — this repo scans with token_prefix: admin"
             echo ""
-            echo "If a value genuinely has no token, add it to velnor.tokens.json in"
-            echo "velnor-design-tokens and rebuild — do not inline it here."
+            echo "If a value genuinely has no token, add it to the token set this repo"
+            echo "consumes and rebuild — do not inline it here."
             echo ""
             printf '%s' "$report"
             exit 1
