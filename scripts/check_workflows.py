@@ -67,6 +67,45 @@ CALLED_BY_OTHER_REPOS = {
     "_schema-bypass-check.yml": "schema-consuming repos (~3)",
 }
 
+# ── `allowed_actions: local_only` — LE-397 ─────────────────────────────────
+#
+# This repository permits ONLY actions owned by VelnorLabs. A workflow that
+# executes HERE and references `actions/checkout` (or anything else third
+# party) does not fail loudly: it returns `startup_failure` with no job, no
+# log and no annotation on any surface anyone reads. _schema-sla-watch.yml has
+# done exactly that 299 consecutive times, every two hours since at least
+# 2026-07-05, having never once run.
+#
+# Reusable templates are EXEMPT BY CONSTRUCTION, not by choice: a called
+# workflow executes in the caller's repository under the caller's policy, so
+# _ci-template.yml's actions/checkout is fine. Only workflows this repo runs
+# itself are constrained.
+VELNOR_OWNER = "VelnorLabs"
+
+# Workflows that violate the rule TODAY. Listed rather than ignored so the
+# breakage is visible in code instead of only in a run history nobody reads.
+# Each is a named follow-up under LE-397; the list should only ever shrink.
+KNOWN_LOCAL_ONLY_VIOLATIONS = {
+    "_schema-sla-watch.yml": (
+        "LE-397 — cron every 2h, 299/299 startup_failure, has never run. The "
+        "reviewer SLA it enforces (T-W1-018) is unenforced. Uses "
+        "actions/github-script."
+    ),
+    "oidc-smoke-test.yml": (
+        "LE-397 — last succeeded 2026-05-31, before the policy. It is the live "
+        "evidence for T-W0-010 AC-1 and would startup_failure today."
+    ),
+    "promote-to-staging.yml": (
+        "LE-397 — workflow_dispatch only, so never attempted since the policy. "
+        "Would startup_failure on first use, i.e. during a release. Note it "
+        "needs aws-actions/configure-aws-credentials, so the OIDC path out of "
+        "this repo is dead too, not just the checkout."
+    ),
+    "promote-to-production.yml": (
+        "LE-397 — same as promote-to-staging, and the worse place to find out."
+    ),
+}
+
 SELF_TRIGGERED = {
     "_schema-sla-watch.yml": (
         "cron in THIS repo (schedule + workflow_dispatch), watching velnor-schemas "
@@ -94,6 +133,29 @@ def declares_workflow_call(on) -> bool:
     if isinstance(on, list):
         return "workflow_call" in on
     return on == "workflow_call"
+
+
+def foreign_actions(doc: dict) -> set[str]:
+    """Every `uses:` in the workflow whose owner is not VelnorLabs.
+
+    Local actions (`./path`) and Docker refs (`docker://`) are not owner-scoped
+    and are left alone — the policy that matters here is repository ownership.
+    """
+    found: set[str] = set()
+    for job in (doc.get("jobs") or {}).values():
+        if not isinstance(job, dict):
+            continue
+        for ref in [job.get("uses")] + [
+            s.get("uses") for s in (job.get("steps") or []) if isinstance(s, dict)
+        ]:
+            if not ref or not isinstance(ref, str):
+                continue
+            if ref.startswith("./") or ref.startswith("docker://"):
+                continue
+            owner = ref.split("/", 1)[0]
+            if owner != VELNOR_OWNER:
+                found.add(ref.split("@", 1)[0])
+    return found
 
 
 def check_name(job_id: str, job: dict) -> str:
@@ -169,7 +231,33 @@ def main() -> int:
         if name in parsed:
             print(f"SKIP: {name} — not a template ({why.split('.')[0]})")
 
-    # ── 3. The required status check actually exists ────────────────────────
+    # ── 3. Self-executing workflows use no third-party actions ──────────────
+    for name in sorted(parsed):
+        doc = parsed[name]
+        on = triggers(doc)
+        # A template that ONLY declares workflow_call never executes here.
+        if declares_workflow_call(on) and len(on if isinstance(on, dict) else [on]) == 1:
+            continue
+
+        foreign = sorted(foreign_actions(doc))
+        if not foreign:
+            print(f"OK  : {name} uses no third-party actions")
+            continue
+
+        if name in KNOWN_LOCAL_ONLY_VIOLATIONS:
+            print(f"KNOWN BROKEN: {name} — {', '.join(foreign)} ({KNOWN_LOCAL_ONLY_VIOLATIONS[name]})")
+            continue
+
+        failures.append(
+            f"{name} runs in THIS repo and references {', '.join(foreign)}. "
+            f"This repo is `allowed_actions: local_only` — only {VELNOR_OWNER}-owned "
+            "actions may run here, so this workflow will return startup_failure "
+            "with no job, no log and no annotation (LE-397). Use plain `run:` "
+            "steps: git, python3, Go and shellcheck are all preinstalled on "
+            "ubuntu-latest. See ci.yml for a worked example."
+        )
+
+    # ── 4. The required status check actually exists ────────────────────────
     if CI_WORKFLOW not in parsed:
         failures.append(
             f"{CI_WORKFLOW} is missing. Main-branch protection requires the "

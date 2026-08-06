@@ -24,6 +24,24 @@
 # If this job is ever renamed, branch protection must be updated in the same
 # change. scripts/check_workflows.py asserts the name so the failure is a clear
 # message rather than a silently blocked branch.
+#
+# WHY THERE IS NOT A SINGLE `uses:` IN THIS FILE (LE-397). This repo is set to
+# `allowed_actions: local_only` — only actions from a VelnorLabs-owned
+# repository may run here. The first version of this workflow used
+# actions/checkout, actions/setup-python and actions/setup-go and came back
+# `startup_failure` with no job, no log and no annotation anyone would look at.
+#
+# That is not a quirk of this file. It is why _schema-sla-watch.yml — the
+# T-W1-018 reviewer-SLA cron — has failed at startup 299 consecutive times,
+# every two hours since at least 2026-07-05, having never once executed. The
+# reusable templates are unaffected because a called workflow runs in the
+# CALLER's repo under the CALLER's policy; only workflows whose own repo is
+# .github are blocked.
+#
+# So this file uses NO actions at all. git, python3 and Go are preinstalled on
+# ubuntu-latest, which makes local_only a posture worth keeping rather than one
+# to weaken for convenience. Do not "simplify" this by adding actions/checkout
+# — it will not start, and it will not tell you why.
 # ---------------------------------------------------------------------------
 
 name: CI
@@ -48,24 +66,42 @@ jobs:
     name: ci
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      # actions/checkout is unavailable here (see the header), so the fetch is
+      # done by hand. GITHUB_SHA on a pull_request is the MERGE commit, which
+      # is a real ref in this repo but is not reachable by tag or archive — so
+      # it is fetched explicitly rather than cloned by branch. The token goes
+      # in an http header rather than the remote URL so it cannot end up in a
+      # log line or in `git remote -v`.
+      - name: Checkout (no actions/checkout — LE-397)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git init -q .
+          git remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          AUTH=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c http.extraheader="AUTHORIZATION: basic ${AUTH}" \
+            fetch -q --depth=1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+          echo "checked out $(git rev-parse --short HEAD)"
 
-      - name: Set up Python
-        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
-        with:
-          python-version: "3.12"
-
-      - name: Install Python deps
-        run: pip install --quiet pyyaml pytest
+      # Ubuntu 24.04's system Python is externally managed, so a bare
+      # `pip install` fails. A venv is the honest fix; --break-system-packages
+      # would work today and rot at the next image bump.
+      - name: Python environment
+        run: |
+          set -euo pipefail
+          python3 --version
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet --upgrade pip
+          .venv/bin/pip install --quiet pyyaml pytest
 
       # ── Structural checks on the workflow files themselves ───────────────
-      # Every workflow parses; every `_`-prefixed template still declares
-      # workflow_call (service repos call them by path, so losing that trigger
-      # fails in EVERY caller and not here); and this job still reports the
-      # name branch protection requires.
+      # Every workflow parses; every template OTHER REPOS CALL still declares
+      # workflow_call (losing that trigger fails in every caller and not here);
+      # and this job still reports the name branch protection requires.
       - name: Workflow files are structurally sound
-        run: python3 scripts/check_workflows.py
+        run: .venv/bin/python scripts/check_workflows.py
 
       # ── The org's PII scanner is tested, at last ─────────────────────────
       # scripts/pii_lint.py runs in Stage 1 of _ci-template.yml, i.e. on every
@@ -75,25 +111,23 @@ jobs:
       # one. An untested scanner that everything depends on is the same shape
       # as the unpassable gate this job exists to fix.
       - name: PII scanner unit tests (scripts/test_pii_lint.py)
-        run: python3 -m pytest scripts/test_pii_lint.py -q
-
-      - name: Set up Go (for the pinned actionlint install)
-        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
-        with:
-          go-version: "1.22"
+        run: .venv/bin/python -m pytest scripts/test_pii_lint.py -q
 
       # PINNED, and do not put @latest back. This job lints files that are
       # otherwise unchanged for weeks; an unpinned linter means the day
       # upstream adds a rule, every open PR in this repo goes red on files
       # nobody touched. Same reasoning as the oapi-codegen pin in
-      # velnor-schemas (LE-118). Installing via `go install` rather than a
-      # third-party action keeps the supply chain at one module, verified
-      # through the Go checksum database.
-      - name: Install actionlint (pinned v1.7.12)
-        run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
-
-      # shellcheck is preinstalled on ubuntu-latest, so actionlint also lints
-      # every `run:` block — which is where the deploy template's real logic
-      # lives.
-      - name: actionlint
-        run: actionlint -no-color -oneline
+      # velnor-schemas (LE-118). `go install` rather than a third-party action
+      # keeps the supply chain at one module verified through the Go checksum
+      # database — and is the only option here anyway (LE-397). Go is
+      # preinstalled on ubuntu-latest, so no setup action is needed.
+      #
+      # shellcheck is also preinstalled, so actionlint lints every `run:`
+      # block — which is where the deploy template's real logic lives, and
+      # where this file's own hand-rolled checkout now lives too.
+      - name: actionlint (pinned v1.7.12)
+        run: |
+          set -euo pipefail
+          go version
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          "$(go env GOPATH)/bin/actionlint" -no-color -oneline
