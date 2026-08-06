@@ -1,0 +1,99 @@
+# ---------------------------------------------------------------------------
+# VelnorLabs/.github · CI — LE-374
+#
+# THE JOB NAME `ci` IS LOAD-BEARING. Main-branch protection on this repo lists
+# `ci` as a required status check (required_status_checks.contexts=["ci"]), and
+# until this file existed NO workflow here reported a check by that name.
+# `gh pr checks` on a live PR returned literally "no checks reported on the
+# branch". A required check that never reports can never be satisfied, so every
+# PR sat at MERGEABLE/BLOCKED forever and the only way to land anything was
+# `--admin` — which worked because enforce_admins is false. #32 through #40 all
+# merged that way, with zero reviews.
+#
+# The harm was not the bypass. It was that admin-bypass became the ONLY workflow
+# in the one repo where governance is enforceable, so the reflex was trained on
+# the org's highest-blast-radius files: `_deploy-template.yml` and
+# `_ci-template.yml` run in every service repo in the org.
+#
+# Two ways out were open (LE-374). Dropping the phantom context would have been
+# one line. Making it real is chosen instead, because the shared workflows here
+# had NO automated validation of any kind — a syntax error in one breaks every
+# repo's CI or deploy, and nothing checked. A passable gate that verifies
+# something worth verifying beats both a broken gate and no gate.
+#
+# If this job is ever renamed, branch protection must be updated in the same
+# change. scripts/check_workflows.py asserts the name so the failure is a clear
+# message rather than a silently blocked branch.
+# ---------------------------------------------------------------------------
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Job id AND name are both `ci` — see the header. Do not rename either
+  # without changing branches/main/protection at the same time.
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps
+        run: pip install --quiet pyyaml pytest
+
+      # ── Structural checks on the workflow files themselves ───────────────
+      # Every workflow parses; every `_`-prefixed template still declares
+      # workflow_call (service repos call them by path, so losing that trigger
+      # fails in EVERY caller and not here); and this job still reports the
+      # name branch protection requires.
+      - name: Workflow files are structurally sound
+        run: python3 scripts/check_workflows.py
+
+      # ── The org's PII scanner is tested, at last ─────────────────────────
+      # scripts/pii_lint.py runs in Stage 1 of _ci-template.yml, i.e. on every
+      # PR in every service repo in the org. scripts/test_pii_lint.py has
+      # existed alongside it since T-W0-011 and had NEVER been executed by any
+      # workflow: _ci-template runs pytest in the CALLER's repo, never in this
+      # one. An untested scanner that everything depends on is the same shape
+      # as the unpassable gate this job exists to fix.
+      - name: PII scanner unit tests (scripts/test_pii_lint.py)
+        run: python3 -m pytest scripts/test_pii_lint.py -q
+
+      - name: Set up Go (for the pinned actionlint install)
+        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+        with:
+          go-version: "1.22"
+
+      # PINNED, and do not put @latest back. This job lints files that are
+      # otherwise unchanged for weeks; an unpinned linter means the day
+      # upstream adds a rule, every open PR in this repo goes red on files
+      # nobody touched. Same reasoning as the oapi-codegen pin in
+      # velnor-schemas (LE-118). Installing via `go install` rather than a
+      # third-party action keeps the supply chain at one module, verified
+      # through the Go checksum database.
+      - name: Install actionlint (pinned v1.7.12)
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+
+      # shellcheck is preinstalled on ubuntu-latest, so actionlint also lints
+      # every `run:` block — which is where the deploy template's real logic
+      # lives.
+      - name: actionlint
+        run: actionlint -no-color -oneline
