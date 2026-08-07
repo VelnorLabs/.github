@@ -406,31 +406,51 @@ jobs:
           echo "Cross-service contract check: $OK healthy, $WARN unhealthy (non-fatal)."
 
       # -----------------------------------------------------------------------
-      # Step 2: Isolation audit smoke — trigger the isolation-audit CodeBuild project
-      # NON-FATAL T-W4 stub (LE-059): the real isolation-audit project + hard
-      # assertion are wired in T-W4. Until then a missing/unprovisioned project or
-      # a non-SUCCEEDED build is a WARNING, not a deploy failure — the deployed
-      # service is already gated by the Stage 3 smoke test. (The named project
-      # velnor-atlas-nightly is not provisioned in dev; real projects are
-      # velnor-atlas-replay-nightly + velnor-isolation-audit-weekly.)
+      # Step 2: Isolation audit smoke — run the real isolation-audit project
+      #
+      # REPOINTED, AND FAILURES ARE NOW VISIBLE (LE-373). This step used to start
+      # PROJECT="velnor-atlas-nightly", which has NEVER EXISTED in dev. Every
+      # deploy of every service got ResourceNotFoundException, swallowed it with
+      # `exit 0`, and reported green — so a step named "Isolation audit smoke"
+      # has never once run an isolation audit, and a reader of a green Stage 4
+      # would reasonably have assumed it had.
+      #
+      # FOUNDER RULING (LE-373): point it at velnor-isolation-audit-weekly and
+      # let a failure show as a FAILED STEP rather than be swallowed to exit 0.
+      # continue-on-error: true keeps the DEPLOY succeeding — the rationale is
+      # deploy-time isolation coverage instead of up to 7 days of exposure
+      # between cron runs, without putting an audit on the critical path.
+      #
+      # REQUIRES velnor-iac's CodeBuildIsolationAuditSmoke grant to have been
+      # APPLIED first — it was scoped to the phantom project, so before that
+      # apply this step returns AccessDenied on every deploy in the fleet.
       # -----------------------------------------------------------------------
       - name: Isolation audit smoke (CodeBuild)
-        continue-on-error: false
+        # Failures are REPORTED, not swallowed: the step goes red, the deploy
+        # still succeeds. That is the whole change — a swallowed error and a
+        # passing step are indistinguishable, which is how this went unnoticed.
+        continue-on-error: true
         run: |
           set -uo pipefail
-          PROJECT="velnor-atlas-nightly"
+          PROJECT="velnor-isolation-audit-weekly"
           echo "Starting $PROJECT CodeBuild build..."
           BUILD_ID=$(aws codebuild start-build \
             --project-name "$PROJECT" \
             --query 'build.id' \
             --output text 2>&1) || {
-            echo "WARN: could not start $PROJECT — non-fatal T-W4 stub. ($BUILD_ID)"
-            exit 0
+            echo "FAILED: could not start $PROJECT. ($BUILD_ID)"
+            echo "If this is AccessDenied, velnor-iac's CodeBuildIsolationAuditSmoke"
+            echo "grant has not been applied yet — see LE-373."
+            exit 1
           }
           echo "Build ID: $BUILD_ID"
 
-          # Poll for completion (max 10 minutes)
-          TIMEOUT=600
+          # Poll past the PROJECT'S OWN timeout, which is 15 minutes for
+          # velnor-isolation-audit-weekly. At the previous 600s this step gave up
+          # first, so a legitimately slow audit would now be reported as a failed
+          # step for a build that was still running and might yet succeed. If the
+          # project's timeoutInMinutes changes, change this with it.
+          TIMEOUT=960
           ELAPSED=0
           POLL_INTERVAL=15
           while [ $ELAPSED -lt $TIMEOUT ]; do
@@ -445,8 +465,9 @@ jobs:
                 exit 0
                 ;;
               FAILED|STOPPED|TIMED_OUT)
-                echo "WARN: isolation audit build $STATUS — non-fatal T-W4 stub."
-                exit 0
+                echo "FAILED: isolation audit build $STATUS."
+                echo "A cross-tenant isolation finding is exactly what this step exists to surface."
+                exit 1
                 ;;
               *)
                 sleep $POLL_INTERVAL
@@ -454,8 +475,11 @@ jobs:
                 ;;
             esac
           done
-          echo "WARN: isolation audit did not finish in ${TIMEOUT}s — non-fatal T-W4 stub."
-          exit 0
+          # Not a failure of the AUDIT — the build is still running and its
+          # outcome is unknown. Say exactly that rather than implying a verdict.
+          echo "UNKNOWN: isolation audit still running after ${TIMEOUT}s; outcome not observed."
+          echo "Build $BUILD_ID continues in CodeBuild — check it there."
+          exit 1
 
       # -----------------------------------------------------------------------
       # Step 3: Concierge classifier smoke — call agent-gateway /run with DIRECT intent
