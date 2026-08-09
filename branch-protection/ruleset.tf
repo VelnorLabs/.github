@@ -80,6 +80,46 @@ resource "github_organization_ruleset" "main_branch_protection" {
         context        = "build"
         integration_id = 0
       }
+
+      # -----------------------------------------------------------------------
+      # T-W5-003 · eval gate · READY TO APPLY, DELIBERATELY NOT APPLIED
+      #
+      # Uncommenting the block below is the ONE STEP that promotes the advisory
+      # eval gate to a merge-blocking one. Do it as part of the DEC-0062 V1.5
+      # plan upgrade — not before, because it cannot work before:
+      #
+      #   - GitHub Free does not enforce branch protection or rulesets on
+      #     PRIVATE repos. Verified 2026-08-09, not inferred:
+      #       gh api repos/VelnorLabs/velnor-evals/branches/main/protection
+      #         -> 403 "Upgrade to GitHub Pro or make this repository public"
+      #       gh api repos/VelnorLabs/velnor-evals/rulesets  -> 403 (same)
+      #       gh api orgs/VelnorLabs -> plan.name="free", owned_private_repos=19
+      #     The token holds admin:org + repo, so this is a PLAN limit, not a
+      #     permissions gap. Org-level rulesets additionally require Team+.
+      #   - DEC-0062 (OPERATIVE, 2026-06-14) chose to defer branch protection to
+      #     V1.5 rather than upgrade, with the stated consequence "a red CI does
+      #     not block merge by rule" and "treat green CI as a convention, not a
+      #     gate, until V1.5". A FOUNDER RULING on 2026-08-09 held that deferral
+      #     when Wave-5 hit its forcing function.
+      #
+      # THE CONTEXT STRING IS THE PART THAT IS EASY TO GET WRONG. It is
+      # "eval-on-pr / eval/on-pr", NOT "eval/on-pr". For a reusable workflow,
+      # the check name GitHub reports is "<caller job id> / <called job name>":
+      # the caller's job is `eval-on-pr` and _eval-on-pr.yml names its job
+      # `eval/on-pr`. Read off live runs (velnor-evals PRs #65/#66/#67), not
+      # guessed. A required check whose context never reports can never be
+      # satisfied — that is LE-374, where this repo's own required `ci` context
+      # matched no job and every PR could only land via --admin.
+      #
+      # Before uncommenting, re-verify the string on a current PR:
+      #   gh pr checks <PR> --repo VelnorLabs/velnor-evals
+      #
+      # See branch-protection/V1_5-ACTIVATION.md for the full checklist.
+      # -----------------------------------------------------------------------
+      # required_check {
+      #   context        = "eval-on-pr / eval/on-pr"
+      #   integration_id = 0
+      # }
     }
 
     # Require signed commits (Invariant §3)

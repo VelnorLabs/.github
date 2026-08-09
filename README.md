@@ -42,18 +42,31 @@ jobs:
 That is the entire `ci.yml`. The shared template handles lint, unit tests,
 build, Trivy scan, cosign image signing, and OIDC smoke test.
 
-## On-PR eval subset (`_eval-on-pr.yml` · T-W3-020, replaces the T-W0-011 stub)
+## On-PR eval subset (`_eval-on-pr.yml` · T-W3-020 impl · T-W5-003 promotion)
 
 Reusable Stage-1 eval workflow: the Q-16/Q-17 git-diff resolver
 (`velnor-evals/hotfix_subset_resolver.py`) classifies a PR's changed paths as
 `ai_harness_intersected` / `infra_only` / `mixed` and the recorded golden-subset
 eval (`velnor-evals harnesses/subset_run.py`, deterministic, no model calls)
 runs only for intersected (targeted tags) or mixed (full subset) — infra-only
-and tests-only PRs skip it entirely. **Informational at Wave 3** (Q-19):
-regressions >2pp below baseline produce `::warning::` annotations + a job
-summary, never a red check; hard-gating arrives with Wave-5 T-W5-001.
+and tests-only PRs skip it entirely.
+
+**ADVISORY GATE since Wave 5** (was informational at Wave 3). The check reports
+`conclusion=failure` when a baselined metric sits >2pp below baseline, when
+refusal precision is below 90% absolute, or when the eval cannot produce a
+usable number (fail closed). The verdict lives in
+`velnor-evals/harnesses/gate_assertion.py`, not in the workflow.
+
+**It does not block merge.** GitHub Free does not enforce required status checks
+on private repos and `DEC-0062` defers branch protection to V1.5 — see
+[`branch-protection/V1_5-ACTIVATION.md`](./branch-protection/V1_5-ACTIVATION.md)
+for the one-step activation and the exact required-check context string.
 
 ```yaml
+permissions:
+  contents: read
+  pull-requests: read    # only if you want the 2-key override recorded
+
 jobs:
   eval-on-pr:
     uses: VelnorLabs/.github/.github/workflows/_eval-on-pr.yml@main
@@ -62,6 +75,34 @@ jobs:
     # secrets:
     #   evals-checkout-token: ${{ secrets.VELNOR_EVALS_READ_TOKEN }}
 ```
+
+The called workflow declares **no job-level `permissions:` block**, on purpose.
+A job-level block replaces inheritance, and a called workflow requesting a scope
+its caller did not grant fails the entire run at startup — so declaring
+`pull-requests: read` there would hard-break every caller granting only
+`contents: read`. Each caller sets its own least-privilege scopes instead.
+
+### `unreachable-evals-is-failure` (default `true`)
+
+A caller that cannot fetch velnor-evals now goes **red** instead of
+green-with-a-warning. This matters: before T-W5-003, velnor-iac's `eval/on-pr`
+check reported **pass on every PR while having skipped the eval entirely** — its
+`VELNOR_EVALS_READ_TOKEN` does not resolve, so the workflow degraded to
+"available=false" and exited 0. A check that has never evaluated anything is the
+LE-374 shape: indistinguishable from a working one.
+
+To fix a red caller, repair the token. To opt out deliberately, set
+`unreachable-evals-is-failure: false` — the job then says loudly in its summary
+that it is reporting success without having evaluated anything.
+
+### 2-key override
+
+`eval-override` label + **two distinct staff approvals on the current head
+commit** + a `## Eval override rationale` section in the PR body. Staff status
+is resolved live from the collaborator API (no committed staff list). A valid
+override is **recorded, not honoured** — the check stays red, because under the
+descope there was never a blocked merge for it to unblock. See
+`velnor-evals/harnesses/gate_override.py`.
 
 ## SDK bypass check (`_sdk-bypass-check.yml` · T-W0-020)
 
@@ -180,6 +221,15 @@ Rules enforced on every `VelnorLabs/*` repo's default branch:
 - CI status checks must pass (lint + unit-tests + build)
 - No force-push
 - No branch deletion
+
+> **It has never been applied, and on the current plan it cannot be.** GitHub
+> Free does not enforce branch protection or rulesets on private repos, and
+> org-level rulesets need Team+. `DEC-0062` defers this to V1.5. See
+> [`branch-protection/V1_5-ACTIVATION.md`](./branch-protection/V1_5-ACTIVATION.md)
+> for the prerequisites, the eval-gate required check (authored, commented out),
+> and a warning that the three contexts listed above (`lint`, `unit-tests`,
+> `build`) match no check any repo currently reports — applying as-is would
+> block every PR in the org on contexts that never report.
 
 ## References
 

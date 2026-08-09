@@ -1,6 +1,5 @@
 # ---------------------------------------------------------------------------
-# VelnorLabs shared eval-on-PR workflow · T-W3-020 (real impl; replaces the
-# T-W0-011 stub)
+# VelnorLabs shared eval-on-PR workflow · T-W3-020 (impl) · T-W5-003 (promotion)
 #
 # Stage-1 on-PR eval subset per Q-16/Q-17: a git-diff resolver
 # (velnor-evals/hotfix_subset_resolver.py) classifies the PR's changed paths
@@ -11,10 +10,40 @@
 # Infra-only and tests-only PRs skip the eval entirely — that is the CI-time
 # saving this workflow exists for.
 #
-# INFORMATIONAL AT WAVE 3 (Q-19 rev.5): this job INFORMS — job summary +
-# ::warning:: annotations when a score sits >2pp below baseline — and always
-# succeeds on scores. Hard-gating on regression arrives with Wave-5 T-W5-001.
-# Structural failures (resolver crash, broken golden sets) still fail the job.
+# ADVISORY GATE AT WAVE 5 (T-W5-003, was informational at Wave 3)
+# ---------------------------------------------------------------
+# This job now reports conclusion=FAILURE when the eval breaches a floor:
+#   - any baselined score metric > 2pp below baseline (Q-19), or
+#   - refusal precision below 90% absolute (Q-19), or
+#   - the eval could not produce a usable number (FAIL CLOSED).
+# The decision lives in velnor-evals harnesses/gate_assertion.py, not here.
+#
+# IT DOES NOT BLOCK MERGE, AND NOTHING HERE SHOULD TRY TO. GitHub Free does not
+# enforce branch protection or required status checks on PRIVATE repos —
+# /branches/main/protection and /rulesets both 403 with "Upgrade to GitHub Pro
+# or make this repository public". DEC-0062 (OPERATIVE) chose to hold that
+# deferral to V1.5 rather than upgrade, and says so verbatim: "a red CI does not
+# block merge by rule". A FOUNDER RULING on 2026-08-09 descoped T-W5-003 to an
+# advisory gate on exactly that basis. The ready-to-apply required-check config
+# is authored and UNAPPLIED at branch-protection/eval-gate-required-check.tf.
+#
+# 2-KEY OVERRIDE
+# --------------
+# `eval-override` label + 2 distinct staff approvals on the CURRENT head commit
+# + a rationale section in the PR body. A valid override does NOT turn this
+# check green — it is a recorded acceptance of a red gate, not an eraser. See
+# velnor-evals harnesses/gate_override.py for why, and for the adversarial
+# cases (self-approval, one actor twice, stale approvals, bots).
+#
+# FAIL CLOSED (Wave-5 invariant)
+# ------------------------------
+# `unreachable-evals-is-failure` defaults TRUE: a caller that cannot reach
+# velnor-evals now goes RED instead of green-with-a-warning. Before this change
+# velnor-iac's `eval/on-pr` check reported PASS on every PR while having
+# skipped the eval entirely (its VELNOR_EVALS_READ_TOKEN does not resolve) — a
+# check that has never evaluated anything is exactly the LE-374 shape: a gate
+# indistinguishable from a broken one. A caller that genuinely wants the old
+# degrade-to-green behaviour must now ask for it explicitly and visibly.
 #
 # Usage in a caller repo (.github/workflows/eval-subset-on-pr.yml):
 #
@@ -24,6 +53,7 @@
 #       branches: [main]
 #   permissions:
 #     contents: read
+#     pull-requests: read      # required: the override reads reviews + labels
 #   jobs:
 #     eval-on-pr:
 #       uses: VelnorLabs/.github/.github/workflows/_eval-on-pr.yml@main
@@ -38,14 +68,13 @@
 # Cross-repo token note (known org gap, same as the deploy-template
 # iac-checkout bug): github.token cannot read OTHER private repos, so callers
 # outside velnor-evals must pass `evals-checkout-token` (org read PAT /
-# GitHub App token) to fetch the resolver + golden sets. Without it the job
-# emits a ::warning:: and exits 0 (informational — it must never block).
+# GitHub App token) to fetch the resolver + golden sets.
 #
 # Invariants enforced:
 #   - Pinned action SHAs (Invariant §4)
 #   - Plain `pull_request` context only — never pull_request_target; the one
 #     optional secret is a read-only checkout token, never exposed to eval code
-#   - permissions: contents: read (no writes, no OIDC — recorded eval is local)
+#   - permissions: contents: read + pull-requests: read (no writes, no OIDC)
 # ---------------------------------------------------------------------------
 
 on:
@@ -61,6 +90,14 @@ on:
         required: false
         type: number
         default: 15
+      unreachable-evals-is-failure:
+        description: >-
+          Fail the check when velnor-evals cannot be fetched. Default true
+          (Wave-5 fail-closed). Set false ONLY with a documented reason — it
+          makes this check report success without having evaluated anything.
+        required: false
+        type: boolean
+        default: true
     secrets:
       evals-checkout-token:
         description: 'Read token for VelnorLabs/velnor-evals (required for callers outside velnor-evals)'
@@ -70,8 +107,16 @@ jobs:
   eval-on-pr:
     name: eval/on-pr
     runs-on: ubuntu-24.04
-    permissions:
-      contents: read
+    # NO job-level `permissions:` block, deliberately. A job-level block
+    # REPLACES inheritance, and a called workflow that requests a scope its
+    # caller did not grant fails the whole run at startup. Declaring
+    # `pull-requests: read` here would therefore hard-break every caller that
+    # grants only `contents: read` — velnor-iac today — which is a far worse
+    # outcome than a red check. Inheriting instead means each caller sets its
+    # own least-privilege scopes: `contents: read` is enough for the eval, and
+    # a caller that wants the 2-key override recorded adds `pull-requests:
+    # read` (velnor-evals does). The override step degrades visibly when the
+    # scope is absent rather than failing the run.
     timeout-minutes: ${{ fromJson(inputs.eval-timeout-minutes) }}
 
     steps:
@@ -110,8 +155,7 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Resolver + golden sets: local when the caller IS velnor-evals; otherwise
-      # fetched from VelnorLabs/velnor-evals (needs evals-checkout-token — see
-      # the cross-repo token note in the header).
+      # fetched from VelnorLabs/velnor-evals (needs evals-checkout-token).
       # -----------------------------------------------------------------------
       - name: Checkout velnor-evals (cross-repo caller)
         id: evals-remote
@@ -127,8 +171,10 @@ jobs:
           # later steps (running evals code) could read it back.
           persist-credentials: false
 
-      - name: Resolve evals dir (or degrade informationally)
+      - name: Resolve evals dir (fail closed when unreachable)
         id: evals
+        env:
+          UNREACHABLE_IS_FAILURE: ${{ inputs.unreachable-evals-is-failure }}
         run: |
           set -euo pipefail
           if [ "${{ github.repository }}" = "VelnorLabs/velnor-evals" ]; then
@@ -139,11 +185,19 @@ jobs:
             echo "available=true" >> "$GITHUB_OUTPUT"
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=eval/on-pr::Cannot fetch VelnorLabs/velnor-evals (resolver + golden sets). Pass secrets.evals-checkout-token from the caller (github.token cannot read other private repos — known org gap). Informational at Wave 3: eval skipped, job green."
+            MSG="Cannot fetch VelnorLabs/velnor-evals (resolver + golden sets). Pass secrets.evals-checkout-token from the caller — github.token cannot read other private repos."
             {
               echo "## eval/on-pr"
-              echo "SKIPPED — velnor-evals not reachable (missing evals-checkout-token)."
+              echo ""
+              echo "**velnor-evals is not reachable — nothing was evaluated.**"
+              echo ""
+              echo "$MSG"
             } >> "$GITHUB_STEP_SUMMARY"
+            if [ "$UNREACHABLE_IS_FAILURE" = "true" ]; then
+              echo "::error title=eval/on-pr FAILS CLOSED::${MSG} This check reports FAILURE rather than a green tick it did not earn (Wave-5 fail-closed invariant). Fix the token, or set unreachable-evals-is-failure: false in the caller with a documented reason."
+              exit 1
+            fi
+            echo "::warning title=eval/on-pr degraded::${MSG} The caller has opted out of fail-closed, so this check is reporting SUCCESS WITHOUT HAVING EVALUATED ANYTHING."
           fi
 
       - name: Set up Python
@@ -182,11 +236,60 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       # -----------------------------------------------------------------------
-      # Subset eval — recorded data-only mode (deterministic, no model calls).
-      # Informational: warns on >2pp regression vs baselines; never blocks.
+      # 2-key override state. Read-only, and deliberately BEFORE the gate so the
+      # summary can report both. It never changes the job's exit status.
       # -----------------------------------------------------------------------
-      - name: Run eval subset (recorded, informational)
+      - name: Read 2-key override state
+        id: override
+        if: steps.evals.outputs.available == 'true' && steps.resolve.outputs.run_eval == 'true' && github.event_name == 'pull_request'
+        # Reporting only — it never decides the job's exit status, so a missing
+        # `pull-requests: read` scope or a transient API error must not mask the
+        # gate verdict. Degrading here is safe in one direction only: the check
+        # is already red whenever an override matters, and a failure to READ an
+        # override can only lose the record, never fabricate one.
+        continue-on-error: true
+        env:
+          EVALS_DIR: ${{ steps.evals.outputs.dir }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # Absolute paths throughout: this step runs with working-directory set
+          # to the EVALS dir, which for a cross-repo caller is
+          # $GITHUB_WORKSPACE/.velnor-evals — so a bare `> pr.json` would land
+          # somewhere the later steps and the artifact upload do not look.
+          PR_JSON="${GITHUB_WORKSPACE}/pr.json"
+          REVIEWS_JSON="${GITHUB_WORKSPACE}/reviews.json"
+          PERMS_JSON="${GITHUB_WORKSPACE}/permissions.json"
+
+          gh api "repos/${REPO}/pulls/${PR_NUMBER}" > "$PR_JSON"
+          gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/reviews" > "$REVIEWS_JSON"
+
+          # Staff status is resolved LIVE from the collaborator API, never from
+          # a list committed in this repo (LE-337/LE-352: enumerations derive).
+          # A lookup that fails (404 = not a collaborator) yields "", which is
+          # not a staff permission — absent must never read as granted.
+          echo '{}' > "$PERMS_JSON"
+          for login in $(jq -r '.[] | select((.user.type // "") != "Bot") | .user.login' "$REVIEWS_JSON" | sort -fu); do
+            perm="$(gh api "repos/${REPO}/collaborators/${login}/permission" --jq '.permission' 2>/dev/null || echo "")"
+            jq --arg l "$login" --arg p "$perm" '. + {($l): $p}' "$PERMS_JSON" > "${PERMS_JSON}.tmp"
+            mv "${PERMS_JSON}.tmp" "$PERMS_JSON"
+          done
+
+          python3 -m harnesses.gate_override_cli \
+            --pr-json "$PR_JSON" \
+            --reviews-json "$REVIEWS_JSON" \
+            --permissions-json "$PERMS_JSON" \
+            --out "${GITHUB_WORKSPACE}/override.json"
+        working-directory: ${{ steps.evals.outputs.dir }}
+
+      # -----------------------------------------------------------------------
+      # THE GATE. Exits nonzero on a breach — this is the deliverable.
+      # -----------------------------------------------------------------------
+      - name: Eval gate assertion (advisory — reports failure, does not block merge)
         if: steps.evals.outputs.available == 'true' && steps.resolve.outputs.run_eval == 'true'
+        id: gate
         env:
           EVALS_DIR: ${{ steps.evals.outputs.dir }}
           SUBSET_TAGS: ${{ steps.resolve.outputs.subset_tags }}
@@ -194,15 +297,54 @@ jobs:
           set -euo pipefail
           cd "$EVALS_DIR"
           START=$(date +%s)
-          python3 -m harnesses.subset_run --tags "$SUBSET_TAGS" | tee subset_eval.out
+          set +e
+          python3 -m harnesses.gate_assertion \
+            --tags "$SUBSET_TAGS" \
+            --json-out "${GITHUB_WORKSPACE}/gate.json" \
+            --summary-out "${GITHUB_WORKSPACE}/gate_summary.md"
+          GATE_RC=$?
+          set -e
           ELAPSED=$(( $(date +%s) - START ))
+
           {
-            echo "## eval/on-pr"
+            cat "${GITHUB_WORKSPACE}/gate_summary.md"
+            echo ""
             echo "- classification: \`${{ steps.resolve.outputs.intersection }}\`"
-            echo "- subset tags: \`${SUBSET_TAGS}\`"
             echo "- runtime: ${ELAPSED}s (budget: 5min)"
-            echo '```'
-            cat subset_eval.out
-            echo '```'
-            echo "_Informational at Wave 3 (Q-19): regressions warn, never block. Hard gate: T-W5-001._"
           } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -f "${GITHUB_WORKSPACE}/override.json" ]; then
+            python3 - <<'PYEOF' >> "$GITHUB_STEP_SUMMARY"
+          import json, os
+          o = json.load(open(os.path.join(os.environ["GITHUB_WORKSPACE"], "override.json")))
+          print("")
+          print("### 2-key override")
+          print("")
+          if not o["requested"]:
+              print("- not requested")
+          elif o["valid"]:
+              print(f"- **ACCEPTED** — co-signed by {', '.join(o['approvers'])}")
+              print(f"- rationale: {o['rationale']}")
+              print("")
+              print("> The check still reports failure. An override records that two "
+                    "staff knowingly accepted a red eval gate; it does not assert the "
+                    "gate passed. `audit_event(eval_gate_override)` is the durable record.")
+          else:
+              print("- **REJECTED**")
+              for r in o["rejections"]:
+                  print(f"  - {r}")
+          PYEOF
+          fi
+
+          exit "$GATE_RC"
+
+      - name: Upload gate + override evidence
+        if: always() && steps.evals.outputs.available == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: eval-gate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            gate.json
+            override.json
+          if-no-files-found: ignore
+          retention-days: 30
