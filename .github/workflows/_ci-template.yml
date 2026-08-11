@@ -59,7 +59,15 @@ on:
         type: string
         default: '3.12'
       tfsec-version:
-        description: 'tfsec version (used when language=terraform)'
+        # DEPRECATED AND IGNORED (LE-439). tfsec was replaced by Trivy's config
+        # scanner in Stage 1; nothing reads this any more. It is retained rather
+        # than deleted only because removing a workflow_call input is a breaking
+        # change for any caller that still passes it — a caller passing an input
+        # the workflow does not declare fails to start, and a failure to start
+        # produces no job and no log (LE-397). No caller in the org passes it
+        # today; delete this once that has been confirmed against every repo's
+        # default branch rather than against local checkouts.
+        description: 'DEPRECATED, ignored — tfsec was replaced by Trivy (LE-439)'
         required: false
         type: string
         default: 'latest'
@@ -217,28 +225,44 @@ jobs:
         run: pytest --tb=short -q
 
       # -----------------------------------------------------------------------
-      # IaC lint — tfsec for Terraform/OpenTofu repos (language=terraform)
-      # Scans for security misconfigurations in HCL; fails on HIGH/CRITICAL.
+      # IaC misconfiguration scan — Trivy, for Terraform/OpenTofu repos.
+      #
+      # THIS REPLACED tfsec (LE-439). Three things were wrong with the step that
+      # used to live here, and they compounded:
+      #
+      #   1. It resolved the version with an UNAUTHENTICATED call to the GitHub
+      #      API's /releases/latest, drawing on the 60-requests-per-hour-per-IP
+      #      anonymous budget shared by every Actions runner on that IP. So it
+      #      rate-limited intermittently and failed PRs in every repo for reasons
+      #      having nothing to do with their content.
+      #   2. It had no error handling: a rate-limit body is a dict with 'message'
+      #      and no 'tag_name', so the failure surfaced as a bare Python KeyError
+      #      that pointed at JSON parsing rather than at the network. velnor-iac
+      #      PR #289 died this way in 26 seconds.
+      #   3. tfsec is DEPRECATED — Aqua folded it into Trivy — so this resolved
+      #      'latest' from a project that has stopped releasing.
+      #
+      # Trivy's config scanner IS where tfsec's checks went, and Trivy is already
+      # pinned and used below, so this removes the dependency rather than pinning
+      # it. No network call, no unpinned version, no abandoned scanner.
+      #
+      # Verified before the swap, on velnor-iac at this severity: 0 findings, so
+      # no repo turns red on adoption — and 30 findings at lower severities plus
+      # 6 HIGH on a deliberately-bad fixture, so the zero is a real clean result
+      # rather than a scanner that ran over nothing.
       # -----------------------------------------------------------------------
-      - name: Install tfsec (IaC lint)
+      - name: Trivy IaC misconfiguration scan
         if: inputs.language == 'terraform'
-        run: |
-          TFSEC_VERSION="${{ inputs.tfsec-version }}"
-          if [ "$TFSEC_VERSION" = "latest" ]; then
-            TFSEC_VERSION=$(curl -s https://api.github.com/repos/aquasecurity/tfsec/releases/latest | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
-          fi
-          echo "Installing tfsec $TFSEC_VERSION"
-          curl -sLo tfsec "https://github.com/aquasecurity/tfsec/releases/download/${TFSEC_VERSION}/tfsec-linux-amd64"
-          chmod +x tfsec
-          sudo mv tfsec /usr/local/bin/tfsec
-          tfsec --version
-
-      - name: tfsec IaC scan
-        if: inputs.language == 'terraform'
-        run: |
-          # Inline output; fails on HIGH/CRITICAL. (SARIF upload to GitHub Security
-          # is omitted — code scanning is unavailable on Free-plan private repos.)
-          tfsec . --minimum-severity HIGH --no-color
+        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8  # v0.24.0
+        with:
+          scan-type: config
+          scan-ref: .
+          format: table
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          hide-progress: true
+        # SARIF upload to GitHub Security is omitted — code scanning is
+        # unavailable on Free-plan private repos, same as the image scan below.
 
       # -----------------------------------------------------------------------
       # Build container image (local — not pushed yet)
@@ -283,7 +307,9 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Trivy vulnerability scan — fail on CRITICAL or HIGH
-      # Skipped for terraform language (tfsec handles IaC scanning above).
+      # Skipped for terraform language: this scans a container IMAGE and a
+      # terraform repo builds none. Terraform gets the Trivy CONFIG scan above
+      # instead — same scanner, different scan type, not an exemption.
       # -----------------------------------------------------------------------
       - name: Trivy vulnerability scan
         if: inputs.language != 'terraform'
