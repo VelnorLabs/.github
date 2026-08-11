@@ -251,9 +251,34 @@ jobs:
       # 6 HIGH on a deliberately-bad fixture, so the zero is a real clean result
       # rather than a scanner that ran over nothing.
       # -----------------------------------------------------------------------
+      # THE SCANNER VERSION IS PINNED HERE, EXPLICITLY, and that is the whole
+      # point of the step. LE-439 was filed because a security scanner was
+      # resolved at run time; shipping a replacement whose scanner version is
+      # decided by whatever an action release happens to bundle would have been
+      # the same defect with a different owner.
+      #
+      # Why this action ref and not v0.24.0: v0.24.0 is a DOCKER action wired to
+      # ghcr.io/aquasecurity/trivy:0.53.0 with no way to choose the binary. 0.53.0
+      # still carries AVD-AWS-0057 ("IAM policy document uses sensitive action on
+      # wildcarded resource"), a check Aqua has since RETIRED — it does not exist
+      # in current Trivy at any severity. It fires 53 times across velnor-iac and
+      # turned that repo's CI red. v0.36.0 installs the binary via setup-trivy and
+      # takes a `version` input, so the scanner is chosen by this file.
+      #
+      # The image scan below deliberately stays on v0.24.0: bumping it changes
+      # which CVEs fail every Go and Python service repo, which is a separate
+      # decision from IaC scanning and must not ride along on this one.
+      #
+      # Verified against velnor-iac with the exact binary named below, run from
+      # the official image rather than a local install:
+      #   docker run ghcr.io/aquasecurity/trivy:0.70.0 config . \
+      #     --severity CRITICAL,HIGH --exit-code 1   ->  exit 0, 0 findings
+      # plus 30 findings at lower severities (so the zero is a real clean result,
+      # not a scan over nothing) and 6 HIGH on a deliberately-bad fixture (so the
+      # gate bites). Re-run those three when bumping `version`.
       - name: Trivy IaC misconfiguration scan
         if: inputs.language == 'terraform'
-        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8  # v0.24.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
           scan-type: config
           scan-ref: .
@@ -261,6 +286,9 @@ jobs:
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
           hide-progress: true
+          # Pinned on purpose — see above. Not 'latest', and not the action's
+          # default, even though they coincide today.
+          version: v0.70.0
         # SARIF upload to GitHub Security is omitted — code scanning is
         # unavailable on Free-plan private repos, same as the image scan below.
 
