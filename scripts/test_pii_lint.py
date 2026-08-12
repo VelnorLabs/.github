@@ -11,6 +11,9 @@ Tests:
   7. File with secret= in a span.set_attribute call → exit 1
   8. Go file with email= in log.Printf → exit 1
   9. Go file with email= in log.Printf but in tests/ → exit 0
+ 10. Go *_test.go file beside the code it tests → exit 0
+ 11. The real velnor-plane-api false positive → exit 0 in _test.go, 1 elsewhere
+ 12. Dot-prefixed directories are not descended into (CI depends on this)
 """
 
 from __future__ import annotations
@@ -209,4 +212,124 @@ def test_go_email_in_tests_dir_exits_0(tmp_path):
     result = run_lint(tmp_path)
     assert result.returncode == 0, (
         f"Expected exit 0 (Go file in tests/ is allowlisted), got {result.returncode}\nstderr:\n{result.stderr}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Test 10: Go *_test.go file beside the code it tests → exit 0
+#
+# Test 9 above only covers a Go file inside a tests/ DIRECTORY, which is not
+# how Go is laid out — `go test` finds test code by the `_test.go` file suffix
+# and it sits next to the package it tests. So test 9 passed while real Go test
+# files were being scanned. This is the case that matters in practice.
+# ---------------------------------------------------------------------------
+
+def test_go_test_file_suffix_exits_0(tmp_path):
+    write_file(tmp_path, 'internal/auth/login_test.go', """\
+        package auth
+
+        import "log"
+
+        func TestLogin(t *testing.T) {
+            log.Printf("test login: email=%s", "a@b.c")
+        }
+    """)
+    result = run_lint(tmp_path)
+    assert result.returncode == 0, (
+        f"Expected exit 0 (*_test.go is allowlisted), got {result.returncode}\nstderr:\n{result.stderr}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Test 11: the exact line that would have turned velnor-plane-api red.
+#
+# internal/applier/applier_db_test.go:226 — a SQL fixture, verbatim. It is not
+# a log call at all: `fmt.Sprintf` matches the log-sink pattern list and
+# `phone = $1` matches the PII key-name pattern, and the two coincide inside a
+# SQL string. This is the ONLY violation the scanner found across all 13 repos
+# that call the shared CI template (measured 2026-08-11, against
+# `git archive origin/main` of each).
+#
+# The second half is the part that keeps the fix honest: the SAME text in a
+# non-test .go file must still fail. If the exemption were ever widened from
+# the `_test.go` suffix to something content-based, this half goes green and
+# tells you.
+# ---------------------------------------------------------------------------
+
+PLANE_API_SQL_FIXTURE_LINE = (
+    'fmt.Sprintf(`UPDATE %s.members SET phone = $1 WHERE id = $2`, fx.schema),'
+)
+
+
+def test_plane_api_sql_fixture_in_test_file_exits_0(tmp_path):
+    write_file(tmp_path, 'internal/applier/applier_db_test.go', f"""\
+        package applier
+
+        func seedPhone(fx fixture) {{
+            _ = {PLANE_API_SQL_FIXTURE_LINE}
+        }}
+    """)
+    result = run_lint(tmp_path)
+    assert result.returncode == 0, (
+        "Expected exit 0 — the velnor-plane-api SQL fixture is in a *_test.go "
+        f"file, got {result.returncode}\nstderr:\n{result.stderr}"
+    )
+
+
+def test_plane_api_sql_fixture_in_source_file_exits_1(tmp_path):
+    write_file(tmp_path, 'internal/applier/applier_db.go', f"""\
+        package applier
+
+        func seedPhone(fx fixture) {{
+            _ = {PLANE_API_SQL_FIXTURE_LINE}
+        }}
+    """)
+    result = run_lint(tmp_path)
+    assert result.returncode == 1, (
+        "Expected exit 1 — the *_test.go exemption must be scoped to the "
+        f"filename, not to the line content, got {result.returncode}\nstderr:\n{result.stderr}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Test 12: dot-prefixed directories are never scanned.
+#
+# _ci-template.yml checks THIS repo out into `.velnor-ci-shared/` inside the
+# caller's workspace and then runs the scanner with `--root .`. actions/checkout
+# will not write outside $GITHUB_WORKSPACE, so the shared copy is unavoidably
+# inside the tree being scanned, and the dot prefix is the only thing keeping
+# the scanner from scanning itself — including this file, whose fixtures above
+# are deliberate violations. If this prune is lost, every repo in the org fails
+# its PII lint on the scanner's own test data.
+#
+# The control case (same content, no dot) proves the fixture really is a
+# violation, so a green result here can't come from a harmless fixture.
+# ---------------------------------------------------------------------------
+
+_VIOLATING_PY = """\
+    import logging
+    logger = logging.getLogger(__name__)
+
+    def leak(email: str):
+        logger.info("signup", email=email)
+"""
+
+
+def test_dot_prefixed_directory_is_not_scanned(tmp_path):
+    write_file(tmp_path, '.velnor-ci-shared/scripts/leaky.py', _VIOLATING_PY)
+    result = run_lint(tmp_path)
+    assert result.returncode == 0, (
+        "Expected exit 0 — .velnor-ci-shared/ is where _ci-template.yml puts "
+        f"the shared scanner checkout and must not be scanned, got {result.returncode}"
+        f"\nstderr:\n{result.stderr}"
+    )
+
+
+def test_same_file_outside_dot_directory_is_scanned(tmp_path):
+    write_file(tmp_path, 'velnor-ci-shared/scripts/leaky.py', _VIOLATING_PY)
+    result = run_lint(tmp_path)
+    assert result.returncode == 1, (
+        "Control for the test above: without the dot the identical file must be "
+        f"flagged, or the dot-prune test proves nothing. Got {result.returncode}"
+        f"\nstderr:\n{result.stderr}"
     )
