@@ -33,7 +33,26 @@ on:
         required: true
         type: string
       image_tag:
-        description: 'Full ECR URI with tag (e.g. 113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-chat-api:abc123)'
+        description: >-
+          Full ECR URI with tag (e.g.
+          113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-chat-api:abc123),
+          or a bare tag the iac module expands.
+
+          THE IMAGE MUST ALREADY BE PUSHED WHEN THIS IS CALLED. This template
+          does not and CANNOT wait for it: a reusable workflow has no way to
+          `needs:` a job in the workflow that calls it, so the ordering exists
+          only in the caller. Call this from a job that `needs:` the CI job and
+          gate it on that job's `image-uri` output being non-empty — see the
+          usage block above, and velnor-chat-api's ci.yml for a live example.
+
+          A caller that instead puts this in its own push-triggered deploy.yml
+          gets NO ordering at all: both workflows start on the same event and
+          `ecs update-service` runs against a tag that does not exist yet. The
+          symptom is quiet — ECS retries the placement, minimumHealthyPercent
+          keeps the old revision serving, and the deploy usually goes GREEN once
+          the push lands (LE-459: velnor-agent-gateway did exactly that, with a
+          3m28s window; velnor-plane-api's slower rollout exhausted the waiter
+          and went red instead).
         required: true
         type: string
       environment:
@@ -213,13 +232,48 @@ jobs:
             # own error. Naming it directly turns a 20-minute diagnosis into a
             # 5-second one — this is exactly how the admin-api failure that
             # motivated LE-322 was eventually root-caused, by hand, afterwards.
+            #
+            # THREE OUTCOMES, NOT TWO (LE-459). This block used to send stderr to
+            # /dev/null and print "IMAGE NOT FOUND IN ECR" for ANY non-zero exit,
+            # so a permission error read as an absent image. That is not a
+            # hypothetical: velnor-github-deploy has NO ECR read at all —
+            #
+            #   aws iam simulate-principal-policy \
+            #     --policy-source-arn arn:aws:iam::<acct>:role/velnor-github-deploy \
+            #     --action-names ecr:DescribeImages ecr:BatchGetImage ecr:GetAuthorizationToken
+            #   => implicitDeny, implicitDeny, implicitDeny
+            #
+            # — so this branch has been reporting a FALSE absence on every failed
+            # deploy in the fleet since LE-322 added it. On velnor-plane-api run
+            # 31561959030 it printed "IMAGE NOT FOUND IN ECR" at 04:22:56Z for an
+            # image whose imagePushedAt was 04:07:50Z, while the actual fault was
+            # a deploy that started before its own build finished. A diagnostic
+            # that can only say one thing is worse than none: it sends the reader
+            # after the wrong bug, confidently.
+            #
+            # Until ecr:DescribeImages is granted, the honest answer here is
+            # "unknown", and this now says so.
             echo "--- image $repo:$tag present in ECR? ---"
-            if aws ecr describe-images --repository-name "$repo" --image-ids "imageTag=$tag" \
-                 --query 'imageDetails[0].imagePushedAt' --output text 2>/dev/null; then
-              echo "image found"
-            else
+            if ecr_out="$(aws ecr describe-images --repository-name "$repo" \
+                 --image-ids "imageTag=$tag" \
+                 --query 'imageDetails[0].imagePushedAt' --output text 2>&1)"; then
+              echo "image found — imagePushedAt=$ecr_out"
+              echo "NOTE: present NOW is not present THEN. If that timestamp is later"
+              echo "than this job's 'Force new ECS deployment' step, the deploy raced"
+              echo "its own image build (LE-459) and the pull failures are explained."
+            elif printf '%s' "$ecr_out" | grep -qE 'ImageNotFoundException|RepositoryNotFoundException'; then
               echo "IMAGE NOT FOUND IN ECR — the task cannot be pulled."
-              echo "Most likely the CI build/push stage failed or is still running."
+              echo "Most likely the CI build/push stage failed, or is still running"
+              echo "because this deploy never waited for it (LE-459: the deploy job"
+              echo "must 'needs:' the CI job that pushes the image, in the same"
+              echo "workflow — there is no needs: across workflows)."
+            else
+              echo "UNKNOWN — could not read ECR. Image presence was NOT determined."
+              echo "This is NOT evidence the image is missing. aws said:"
+              printf '  %s\n' "$ecr_out"
+              echo "If that is AccessDenied, grant ecr:DescribeImages on this repo to"
+              echo "velnor-github-deploy in velnor-iac; until then this line cannot"
+              echo "answer the question it asks."
             fi
             echo "--- 10 most recent service events ---"
             aws ecs describe-services --cluster "$cluster" --services "$service" \
