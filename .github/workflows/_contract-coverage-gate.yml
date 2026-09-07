@@ -1,0 +1,97 @@
+# ---------------------------------------------------------------------------
+# _contract-coverage-gate.yml · T-W4-024
+#
+# The contract-coverage gate — velnor-schemas/audit/contract_coverage.py in
+# its --gate mode, turned from a report into a verdict for ONE repo. It
+# fails a PR that:
+#
+#   service repo   registers a route (chi / FastAPI) whose METHOD + PATH is
+#                  absent from the OpenAPI spec in velnor-schemas
+#   client repo    calls fetch() (or a hand-rolled fetch wrapper) with a
+#                  literal /api/ path absent from every spec
+#
+# Both fail with the offending file:line as a GitHub error annotation.
+# Non-literal client paths are printed as notes and never fail the gate.
+#
+# Called via workflow_call from a repo's CI pipeline. The repo under test is
+# the CALLER; it is checked out under a repos-root directory named after
+# itself, because the audit discovers repos by name:
+#
+#   jobs:
+#     contract-coverage:
+#       uses: VelnorLabs/.github/.github/workflows/_contract-coverage-gate.yml@main
+#       secrets: inherit
+#
+# SENTINEL FIRST (T-W4-024 §5): this is wired to exactly one repo,
+# velnor-admin-api, until it has been boring there. Fan-out is a separate
+# task; adding a repo is the one-line job above.
+#
+# Invariants:
+#   - Pinned action SHAs (Invariant §4)
+#   - contents: read only; velnor-schemas is private, so its checkout needs
+#     VELNOR_SCHEMAS_READ_TOKEN (the same secret _schema-bypass-check uses)
+# ---------------------------------------------------------------------------
+name: Contract coverage gate
+
+on:
+  workflow_call:
+    inputs:
+      repo_name:
+        description: >-
+          Name of the repo under test as the audit knows it (velnor-admin-api,
+          velnor-web, …). Defaults to the calling repository's name.
+        required: false
+        type: string
+        default: ""
+      schemas_ref:
+        description: "velnor-schemas git ref carrying the spec to gate against"
+        required: false
+        type: string
+        default: "main"
+    secrets:
+      VELNOR_SCHEMAS_READ_TOKEN:
+        required: true
+
+jobs:
+  contract-coverage-gate:
+    name: Contract coverage gate (routes and calls declared in the spec)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      REPO_NAME: ${{ inputs.repo_name != '' && inputs.repo_name || github.event.repository.name }}
+    steps:
+      # The audit identifies a repo by its directory name and only accepts a
+      # real clone (a .git DIRECTORY), which actions/checkout produces.
+      - name: Checkout the repo under test
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: repos-root/${{ env.REPO_NAME }}
+
+      - name: Checkout velnor-schemas (the spec of record)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: VelnorLabs/velnor-schemas
+          ref: ${{ inputs.schemas_ref }}
+          path: repos-root/velnor-schemas
+          token: ${{ secrets.VELNOR_SCHEMAS_READ_TOKEN }}
+
+      - name: Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Install the audit's one dependency
+        run: python3 -m pip install --quiet "pyyaml==6.0.2"
+
+      - name: Gate ${{ env.REPO_NAME }} against the spec
+        shell: bash
+        run: |
+          set -uo pipefail
+          if [ ! -d "repos-root/${REPO_NAME}/.git" ]; then
+            echo "::error::repos-root/${REPO_NAME} is not a git clone — the audit would scan nothing"
+            exit 1
+          fi
+          python3 repos-root/velnor-schemas/audit/contract_coverage.py \
+            --repos-root repos-root \
+            --gate "${REPO_NAME}"
