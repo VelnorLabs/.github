@@ -38,23 +38,20 @@
 #       secrets:
 #         VELNOR_SCHEMAS_READ_TOKEN: ${{ secrets.VELNOR_SDK_READ_TOKEN }}  # LE-471 mapping
 #
-# THE CONTRACTS REPO IS AN INPUT, NOT A GIVEN. At the time this workflow was
-# written velnor-screen-contracts had no GitHub repository and no remote — it
-# is a local-only repo on the founder's machine. So the contracts checkout is
-# parameterised (`contracts_repo` + `contracts_ref`) exactly the way the
-# coverage gate takes velnor-schemas, and THE CALLER STAYS RED until
-# VelnorLabs/velnor-screen-contracts exists and is pushed. That is deliberate:
-# a gate that skipped itself when its source of truth was absent would report
-# green for the wrong reason (the LE-374/LE-397 lesson). Nothing here creates
-# the repo; publishing it is a founder action.
+# The contracts come from VelnorLabs/velnor-screen-contracts, checked out the
+# same way _contract-coverage-gate.yml obtains velnor-schemas: fixed repo, a
+# `contracts_ref` input defaulting to main. There is no "skip when absent"
+# path — a gate that went green because its source of truth was missing would
+# be green for the wrong reason (the LE-374/LE-397 lesson).
 #
 # Invariants:
 #   - Pinned action SHAs (Invariant §4)
 #   - contents: read only; velnor-schemas and velnor-screen-contracts are
 #     private, so their checkouts need a read token. VELNOR_SCHEMAS_READ_TOKEN
-#     is the same secret _contract-coverage-gate uses; if the contracts repo
-#     needs a different token, pass VELNOR_CONTRACTS_READ_TOKEN — it falls back
-#     to the schemas token when empty.
+#     is the same secret _contract-coverage-gate uses (callers map the org's
+#     VELNOR_SDK_READ_TOKEN, LE-471); if that token cannot read the contracts
+#     repo, pass VELNOR_CONTRACTS_READ_TOKEN — it falls back to the schemas
+#     token when empty.
 # ---------------------------------------------------------------------------
 name: Screen contracts gate
 
@@ -73,11 +70,6 @@ on:
         required: false
         type: string
         default: "src/api/generated"
-      contracts_repo:
-        description: "owner/name of the screen-contracts repo (see the header: it may not exist yet)"
-        required: false
-        type: string
-        default: "VelnorLabs/velnor-screen-contracts"
       contracts_ref:
         description: "velnor-screen-contracts git ref carrying the contracts to gate against"
         required: false
@@ -114,7 +106,7 @@ jobs:
       - name: Checkout velnor-screen-contracts (the contracts of record)
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          repository: ${{ inputs.contracts_repo }}
+          repository: VelnorLabs/velnor-screen-contracts
           ref: ${{ inputs.contracts_ref }}
           path: velnor-screen-contracts
           token: ${{ secrets.VELNOR_CONTRACTS_READ_TOKEN != '' && secrets.VELNOR_CONTRACTS_READ_TOKEN || secrets.VELNOR_SCHEMAS_READ_TOKEN }}
@@ -150,7 +142,7 @@ jobs:
             exit 1
           fi
           if [ ! -f velnor-screen-contracts/scripts/validate_contracts.py ]; then
-            echo "::error::velnor-screen-contracts checkout has no scripts/validate_contracts.py — wrong contracts_repo/contracts_ref?"
+            echo "::error::velnor-screen-contracts checkout has no scripts/validate_contracts.py — wrong contracts_ref?"
             exit 1
           fi
           cd velnor-screen-contracts
