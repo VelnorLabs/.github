@@ -9,7 +9,19 @@
 #   jobs:
 #     schema-check:
 #       uses: VelnorLabs/.github/.github/workflows/_schema-bypass-check.yml@main
-#       secrets: inherit
+#       with:
+#         scan_paths: "."          # Go/Python repos have no src/
+#       secrets:
+#         VELNOR_SCHEMAS_READ_TOKEN: ${{ secrets.VELNOR_SDK_READ_TOKEN }}  # LE-471 mapping
+#       # (`secrets: inherit` also works once the caller holds a secret of that name)
+#
+# LE-509 (2026-09-12): the secret is now DECLARED under workflow_call — before,
+# a caller that mapped it explicitly made its whole workflow startup_failure,
+# and `inherit` failed at the checkout with "Input required and not supplied:
+# token". Sanctioned patterns are exempt from the scan: a Go/TS alias
+# (`type X = pkg.X`) and a Go wrapper struct whose first field embeds the
+# generated `pkg.X` (LE-496 rollout pattern). Default scan path is "." because
+# Go and Python repos have no src/ and the old default scanned nothing.
 #
 # The check:
 #   1. Clones velnor-schemas@main to extract the canonical name list.
@@ -26,15 +38,19 @@ on:
   workflow_call:
     inputs:
       scan_paths:
-        description: "Space-separated list of paths to scan (default: src)"
+        description: "Space-separated list of paths to scan (default: . — Go/Python repos have no src/)"
         required: false
         type: string
-        default: "src"
+        default: "."
       schemas_ref:
         description: "velnor-schemas git ref to use for canonical name list"
         required: false
         type: string
         default: "main"
+    secrets:
+      VELNOR_SCHEMAS_READ_TOKEN:
+        description: "Token with contents:read on VelnorLabs/velnor-schemas (callers map VELNOR_SDK_READ_TOKEN, LE-471)"
+        required: true
 
 jobs:
   schema-bypass-check:
@@ -125,7 +141,8 @@ jobs:
               --include="*.ts" --include="*.tsx" --include="*.js" \
               --exclude-dir="generated" --exclude-dir="node_modules" --exclude-dir=".next" \
               -E "(^|export )(type|interface|class) ${CANONICAL_NAME}(\s|<|\{|$)" \
-              service-repo/$SCAN_PATHS 2>/dev/null || true)
+              service-repo/$SCAN_PATHS 2>/dev/null \
+              | grep -vE "(^|export )type ${CANONICAL_NAME} = " || true)   # LE-509: re-export alias is sanctioned
             if [ -n "$RESULTS" ]; then
               while IFS= read -r line; do
                 echo "SHADOW [TypeScript] ${CANONICAL_NAME}: $line" >> "$VIOLATIONS_FILE"
@@ -149,9 +166,28 @@ jobs:
               --include="*.go" \
               --exclude-dir="generated" --exclude-dir="vendor" \
               -E "^type ${CANONICAL_NAME} " \
-              service-repo/$SCAN_PATHS 2>/dev/null || true)
+              service-repo/$SCAN_PATHS 2>/dev/null \
+              | grep -vE ":type ${CANONICAL_NAME} = " || true)   # LE-509: alias of a generated type is sanctioned
+            # LE-509: a wrapper struct whose FIRST field embeds the generated
+            # type of the same name (`type X struct {\n    pkg.X\n ...`) is the
+            # sanctioned extension pattern (LE-496); it re-exports, not redefines.
+            if [ -n "$RESULTS" ]; then
+              KEPT=""
+              while IFS= read -r line; do
+                [ -z "$line" ] && continue
+                FILE="${line%%:*}"; REST="${line#*:}"; LN="${REST%%:*}"
+                NEXT="$(sed -n "$((LN+1))p" "$FILE" 2>/dev/null || true)"
+                if printf '%s' "$line" | grep -qE ":type ${CANONICAL_NAME} struct \{" \
+                   && printf '%s' "$NEXT" | grep -qE "^[[:space:]]+[A-Za-z_][A-Za-z0-9_]*\.${CANONICAL_NAME}([[:space:]]|$)"; then
+                  continue
+                fi
+                KEPT="${KEPT}${line}"$'\n'
+              done <<< "$RESULTS"
+              RESULTS="$(printf '%s' "$KEPT")"
+            fi
             if [ -n "$RESULTS" ]; then
               while IFS= read -r line; do
+                [ -z "$line" ] && continue
                 echo "SHADOW [Go] ${CANONICAL_NAME}: $line" >> "$VIOLATIONS_FILE"
               done <<< "$RESULTS"
             fi
