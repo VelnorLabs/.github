@@ -65,6 +65,7 @@ CALLED_BY_OTHER_REPOS = {
     "_eval-on-pr.yml": "eval-gated repos (~27)",
     "_design-tokens-gate.yml": "the front-end repos (~5)",
     "_contract-coverage-gate.yml": "velnor-admin-api (sentinel; T-W4-024 — fan-out is a separate task)",
+    "_screen-contracts-gate.yml": "velnor-web (T-W6-021)",
     "_schema-bypass-check.yml": "schema-consuming repos (~3)",
 }
 

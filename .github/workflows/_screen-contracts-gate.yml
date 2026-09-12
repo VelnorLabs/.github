@@ -1,0 +1,153 @@
+# ---------------------------------------------------------------------------
+# _screen-contracts-gate.yml · T-W6-021
+#
+# The screen-contract gate — Phase 4 of the velnor-screen-contracts mission,
+# turned from a rule people remember into a verdict on every velnor-web PR.
+# It runs velnor-screen-contracts/scripts/validate_contracts.py in its
+# --registry mode against the CALLER's route registry and generated client:
+#
+#   route without a green contract   a registry row whose `contract` id has no
+#                                    validator-green file (a `built` row that is
+#                                    missing, red, or still a PENDING.yaml line)
+#                                    fails naming the route
+#   op the client cannot call        a contract binding an operationId that the
+#                                    caller's generated client (src/api/generated,
+#                                    `export const OPERATIONS`) does not export
+#                                    fails naming the op and the screen
+#   placeholder + PENDING            allowed — the brief's edge case; a PENDING
+#                                    screen may keep a registered route only while
+#                                    the registry says `placeholder`
+#   missing variant contract         WARN, never a failure (persona variants land
+#                                    across many Wave-6 tasks)
+#
+# Composes with, never duplicates, the two gates before it (T-W4-024 §6):
+# _design-tokens-gate.yml judges styles, _contract-coverage-gate.yml judges
+# raw fetch() paths against the spec, and velnor-web's own
+# `codegen:api:check` job proves src/api/generated matches the installed
+# @velnor/schemas. This gate trusts that tree and asks one more question:
+# does every registered screen bind only what the client can actually call.
+#
+# Called via workflow_call from velnor-web's CI pipeline:
+#
+#   jobs:
+#     screen-contracts:
+#       uses: VelnorLabs/.github/.github/workflows/_screen-contracts-gate.yml@main
+#       with:
+#         registry_path: src/routes/registry.json
+#         generated_dir: src/api/generated
+#       secrets:
+#         VELNOR_SCHEMAS_READ_TOKEN: ${{ secrets.VELNOR_SDK_READ_TOKEN }}  # LE-471 mapping
+#
+# The contracts come from VelnorLabs/velnor-screen-contracts, checked out the
+# same way _contract-coverage-gate.yml obtains velnor-schemas: fixed repo, a
+# `contracts_ref` input defaulting to main. There is no "skip when absent"
+# path — a gate that went green because its source of truth was missing would
+# be green for the wrong reason (the LE-374/LE-397 lesson).
+#
+# Invariants:
+#   - Pinned action SHAs (Invariant §4)
+#   - contents: read only; velnor-schemas and velnor-screen-contracts are
+#     private, so their checkouts need a read token. VELNOR_SCHEMAS_READ_TOKEN
+#     is the same secret _contract-coverage-gate uses (callers map the org's
+#     VELNOR_SDK_READ_TOKEN, LE-471); if that token cannot read the contracts
+#     repo, pass VELNOR_CONTRACTS_READ_TOKEN — it falls back to the schemas
+#     token when empty.
+# ---------------------------------------------------------------------------
+name: Screen contracts gate
+
+on:
+  workflow_call:
+    inputs:
+      registry_path:
+        description: "Route registry in the caller (velnor-web: src/routes/registry.json)"
+        required: false
+        type: string
+        default: "src/routes/registry.json"
+      generated_dir:
+        description: >-
+          Directory of the caller's generated API client modules, each carrying
+          `export const OPERATIONS = [...] as const` (velnor-web: src/api/generated)
+        required: false
+        type: string
+        default: "src/api/generated"
+      contracts_ref:
+        description: "velnor-screen-contracts git ref carrying the contracts to gate against"
+        required: false
+        type: string
+        default: "main"
+      schemas_ref:
+        description: "velnor-schemas git ref carrying the spec the contracts bind to"
+        required: false
+        type: string
+        default: "main"
+    secrets:
+      VELNOR_SCHEMAS_READ_TOKEN:
+        description: "Token with contents:read on VelnorLabs/velnor-schemas (callers map VELNOR_SDK_READ_TOKEN, LE-471)"
+        required: true
+      VELNOR_CONTRACTS_READ_TOKEN:
+        description: "Token with contents:read on the contracts repo; falls back to VELNOR_SCHEMAS_READ_TOKEN when unset"
+        required: false
+
+jobs:
+  screen-contracts-gate:
+    name: Screen contracts gate (every route has a green contract; every bound op is callable)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      REGISTRY_PATH: ${{ inputs.registry_path }}
+      GENERATED_DIR: ${{ inputs.generated_dir }}
+    steps:
+      - name: Checkout the repo under test
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: caller
+
+      - name: Checkout velnor-screen-contracts (the contracts of record)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: VelnorLabs/velnor-screen-contracts
+          ref: ${{ inputs.contracts_ref }}
+          path: velnor-screen-contracts
+          token: ${{ secrets.VELNOR_CONTRACTS_READ_TOKEN != '' && secrets.VELNOR_CONTRACTS_READ_TOKEN || secrets.VELNOR_SCHEMAS_READ_TOKEN }}
+
+      - name: Checkout velnor-schemas (the spec of record)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: VelnorLabs/velnor-schemas
+          ref: ${{ inputs.schemas_ref }}
+          path: velnor-schemas
+          token: ${{ secrets.VELNOR_SCHEMAS_READ_TOKEN }}
+
+      - name: Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Install the validator's one dependency
+        run: python3 -m pip install --quiet "pyyaml==6.0.2"
+
+      - name: Gate the registry against the contracts, the spec and the generated client
+        shell: bash
+        run: |
+          set -uo pipefail
+          # Each precondition fails loudly by name. A gate that scanned nothing
+          # must never be green.
+          if [ ! -f "caller/${REGISTRY_PATH}" ]; then
+            echo "::error::caller/${REGISTRY_PATH} not found — pass registry_path"
+            exit 1
+          fi
+          if [ ! -d "caller/${GENERATED_DIR}" ]; then
+            echo "::error::caller/${GENERATED_DIR} not found — pass generated_dir (velnor-web: npm run codegen:api)"
+            exit 1
+          fi
+          if [ ! -f velnor-screen-contracts/scripts/validate_contracts.py ]; then
+            echo "::error::velnor-screen-contracts checkout has no scripts/validate_contracts.py — wrong contracts_ref?"
+            exit 1
+          fi
+          cd velnor-screen-contracts
+          python3 scripts/validate_contracts.py \
+            --specs ../velnor-schemas/openapi \
+            --allow contracts/known-defects.yaml \
+            --registry "../caller/${REGISTRY_PATH}" \
+            --generated "../caller/${GENERATED_DIR}"
