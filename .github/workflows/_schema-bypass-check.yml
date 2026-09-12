@@ -22,6 +22,8 @@
 # (`type X = pkg.X`) and a Go wrapper struct whose first field embeds the
 # generated `pkg.X` (LE-496 rollout pattern). Default scan path is "." because
 # Go and Python repos have no src/ and the old default scanned nothing.
+# 2026-09-12 follow-up: Go files with a `Code generated ... DO NOT EDIT.`
+# header (sqlc/mockgen/oapi-codegen output outside generated/) are skipped.
 #
 # The check:
 #   1. Clones velnor-schemas@main to extract the canonical name list.
@@ -171,11 +173,19 @@ jobs:
             # LE-509: a wrapper struct whose FIRST field embeds the generated
             # type of the same name (`type X struct {\n    pkg.X\n ...`) is the
             # sanctioned extension pattern (LE-496); it re-exports, not redefines.
+            # Also skip files that declare themselves generated (Go convention
+            # `// Code generated ... DO NOT EDIT.` in the header) — sqlc, mockgen
+            # and oapi-codegen output lives outside generated/ and cannot be
+            # renamed without renaming a table (plane-api internal/queries/models.go
+            # `CheckIn` vs velnor-schemas 0.22.0 `CheckIn`, run 34704818473).
             if [ -n "$RESULTS" ]; then
               KEPT=""
               while IFS= read -r line; do
                 [ -z "$line" ] && continue
                 FILE="${line%%:*}"; REST="${line#*:}"; LN="${REST%%:*}"
+                if head -n 5 "$FILE" 2>/dev/null | grep -qE '^// Code generated .*DO NOT EDIT\.'; then
+                  continue
+                fi
                 NEXT="$(sed -n "$((LN+1))p" "$FILE" 2>/dev/null || true)"
                 if printf '%s' "$line" | grep -qE ":type ${CANONICAL_NAME} struct \{" \
                    && printf '%s' "$NEXT" | grep -qE "^[[:space:]]+[A-Za-z_][A-Za-z0-9_]*\.${CANONICAL_NAME}([[:space:]]|$)"; then
