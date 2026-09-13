@@ -113,6 +113,15 @@ jobs:
       - name: PII scanner unit tests (scripts/test_pii_lint.py)
         run: .venv/bin/python -m pytest scripts/test_pii_lint.py -q
 
+      # ── The deploy template's image wait is EXECUTED, not read (LE-459) ──
+      # _deploy-template.yml's "Wait for image in ECR" step gates every
+      # service's Stage 3. This runs its exact `run:` block against a fake aws
+      # (present / late / never / AccessDenied / missing repo; tag, URI and
+      # digest forms) under both shells Actions uses, and asserts the step sits
+      # before tofu apply. Needs only the venv's pyyaml + pytest.
+      - name: Deploy image-wait tests (scripts/test_deploy_wait_for_image.py)
+        run: .venv/bin/python -m pytest scripts/test_deploy_wait_for_image.py -q
+
       # PINNED, and do not put @latest back. This job lints files that are
       # otherwise unchanged for weeks; an unpinned linter means the day
       # upstream adds a rule, every open PR in this repo goes red on files
