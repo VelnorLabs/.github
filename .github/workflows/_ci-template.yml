@@ -369,18 +369,109 @@ jobs:
 
       # -----------------------------------------------------------------------
       # PII lint — scan source for PII leakage patterns in log/span/metric calls
-      # Runs after other steps so failures from Trivy/tests are visible too
+      # Runs after other steps so failures from Trivy/tests are visible too.
+      #
+      # THIS STEP SCANNED NOTHING, IN EVERY REPO BUT ONE, UNTIL 2026-08-11.
+      # It was gated on `[ -f scripts/pii_lint.py ]` — the script existing in
+      # the CALLING repo — and the script lives here, in VelnorLabs/.github. Of
+      # the 11 repos that call this template, exactly one (velnor-chat-api) had
+      # ever vendored a copy. The other 10 printed
+      #   "scripts/pii_lint.py not found in this repo — skipping PII lint."
+      # and went green. The step's own comment claimed it would "fall back to
+      # VelnorLabs/.github copy"; it printed a sentence and moved on. That
+      # comment is the reason nobody noticed — it described behaviour that was
+      # never written. Same shape as LE-374 (a required check no workflow
+      # reported) and the import_audit gate that skipped .go files: a gate that
+      # cannot bite reads exactly like a gate that finds nothing.
+      #
+      # The fallback is now a real checkout of this repo. Notes on the choices:
+      #
+      #  * NO TOKEN IS NEEDED. VelnorLabs/.github is a PUBLIC repo (verified
+      #    2026-08-11: an unauthenticated GET of raw.githubusercontent.com's
+      #    copy of scripts/pii_lint.py returns 200), so the default GITHUB_TOKEN
+      #    reads it fine and no org/repo secret has to be provisioned. That
+      #    matters here: this org is on the GitHub Free plan, where org-level
+      #    secrets are unavailable to private repos, so a token-based fallback
+      #    would have meant adding a secret to all 10 repos by hand.
+      #    `persist-credentials: false` keeps the token out of the sub-checkout.
+      #
+      #  * `.velnor-ci-shared` MUST KEEP ITS LEADING DOT. actions/checkout
+      #    refuses to write outside $GITHUB_WORKSPACE, so the shared copy lands
+      #    inside the tree the scanner then walks with `--root .`. pii_lint.py
+      #    prunes dot-prefixed directories, and that prune is the only thing
+      #    keeping the scanner out of its own source. A non-dot path happens to
+      #    pass today (measured 2026-08-11) — but only because
+      #    scripts/test_pii_lint.py carries the literal `# pii-lint: ignore`
+      #    inside a fixture, which exempts the whole file; bypass that check and
+      #    the same file yields 15 violations. Renaming this path is one commit
+      #    away from failing every repo in the org on the scanner's own test
+      #    data. scripts/test_pii_lint.py asserts the prune, with a control.
+      #
+      #  * NO `ref:` — the checkout takes this repo's default branch, main, on
+      #    purpose. Every one of the 11 callers references this template as
+      #    `_ci-template.yml@main` (checked against each repo's default branch
+      #    on 2026-08-11 by grepping for the `uses:` line, not the filename —
+      #    three more repos merely mention it in prose), so main is the commit
+      #    whose template is
+      #    running: scanner and workflow stay in step.
+      #    `github.job_workflow_sha` — the reusable workflow's own commit —
+      #    would have been more precise and was tried first. It is an OIDC token
+      #    claim, not a `github` context property: actionlint v1.7.12, which
+      #    this repo's CI runs, rejects it as undefined, and the context list it
+      #    checks against has `workflow_sha` (the CALLER's workflow file) and no
+      #    job_workflow_sha. Do not reintroduce it without evidence it resolves.
+      #    A hard SHA pin was also rejected: the pinned commit must already be
+      #    on main, so the first run after this merge would fetch the PREVIOUS
+      #    scanner — the one without the *_test.go rule below — and turn
+      #    velnor-plane-api red. If a caller ever pins this template to a SHA it
+      #    will get main's scanner, a skew whose escape hatch is to vendor a
+      #    copy (which takes precedence — see below).
+      #
+      #  * THE VENDORED COPY STILL WINS. velnor-chat-api has its own
+      #    scripts/pii_lint.py (byte-identical to this one as of 2026-08-11, but
+      #    that is not guaranteed to last). It must keep running its own copy,
+      #    or that repo silently switches scanner versions on merge of this
+      #    change. Precedence is expressed twice — the checkout is skipped when
+      #    a vendored copy exists, and the run step prefers it regardless — so
+      #    neither half alone can flip it.
+      #
+      #  * FLEET IMPACT WAS MEASURED BEFORE ENABLING, not assumed. The scanner
+      #    was run locally over `git archive origin/main` of all 11 caller repos
+      #    on 2026-08-11. Result: one violation, in velnor-plane-api, and it was
+      #    a false positive in a Go test file. pii_lint.py's allowlist grew a
+      #    `*_test.go` rule in this same change to cover it (see the comment on
+      #    GO_TEST_FILE_SUFFIX), after which all 11 are clean. That is why this
+      #    stays a hard failure instead of shipping as warn-only.
+      #
+      #  * python3 is used directly rather than via actions/setup-python: this
+      #    step runs for language=go and language=terraform too, where no Python
+      #    is set up, and the scanner imports nothing outside the stdlib.
       # -----------------------------------------------------------------------
+      - name: Fetch shared PII scanner (repos without a vendored copy)
+        if: always() && hashFiles('scripts/pii_lint.py') == ''
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          repository: VelnorLabs/.github
+          path: .velnor-ci-shared
+          persist-credentials: false
+
       - name: PII lint
         if: always()
         run: |
+          set -euo pipefail
           if [ -f scripts/pii_lint.py ]; then
+            echo "PII lint: using this repo's vendored scripts/pii_lint.py"
             python3 scripts/pii_lint.py --root .
+          elif [ -f .velnor-ci-shared/scripts/pii_lint.py ]; then
+            echo "PII lint: using the shared VelnorLabs/.github scanner"
+            python3 .velnor-ci-shared/scripts/pii_lint.py --root .
           else
-            # Fall back to VelnorLabs/.github copy if running from a service repo
-            # that hasn't vendored the script yet
-            echo "scripts/pii_lint.py not found in this repo — skipping PII lint."
-            echo "Add 'uses: VelnorLabs/.github' step or copy scripts/pii_lint.py to enable."
+            # Reachable only if the checkout above was skipped or produced no
+            # script. Failing loudly is the point of this change — the previous
+            # behaviour in exactly this branch was to print and pass, which is
+            # how the scanner came to be inert in 10 repos for months.
+            echo "::error::PII lint could not find a scanner. Expected scripts/pii_lint.py in this repo, or .velnor-ci-shared/scripts/pii_lint.py from the shared checkout."
+            exit 1
           fi
 
   # ---------------------------------------------------------------------------
