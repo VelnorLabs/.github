@@ -420,6 +420,80 @@ jobs:
           esac
 
       # -----------------------------------------------------------------------
+      # Step 4b: Verify the service runs THIS deploy's image (LE-459 fix 2)
+      #
+      # The waiter above answers "is the service stable?", not "is it stable on
+      # the revision this deploy registered?". Those come apart once a
+      # deployment circuit breaker with rollback is on: a rollout whose tasks
+      # cannot start is marked FAILED and ECS rolls back to the previous
+      # revision, which then reaches steady state. `aws ecs wait
+      # services-stable` returns success on that, and so did this job.
+      #
+      # So read the PRIMARY deployment and require BOTH:
+      #   - a container in its task definition running exactly the image this
+      #     deploy asked for (image_tag resolved as in "Wait for image in ECR"),
+      #   - rolloutState COMPLETED. Right image but IN_PROGRESS is re-read every
+      #     POLL_SECONDS up to MAX_CHECKS times, since the waiter and
+      #     rolloutState can disagree for a moment at the end of a rollout.
+      # Anything else fails the job, names both images and prints the service
+      # events.
+      #
+      # Inputs arrive through env and never as ${{ }} inside the script, so
+      # scripts/test_deploy_verify_primary.py executes this exact block against
+      # a fake `aws`.
+      # -----------------------------------------------------------------------
+      - name: Verify the service runs this deploy's image
+        id: verify-primary
+        env:
+          IMAGE_REF: ${{ inputs.image_tag }}
+          SERVICE: ${{ inputs.service }}
+          CLUSTER: ${{ env.ECS_CLUSTER }}
+          POLL_SECONDS: '10'
+          MAX_CHECKS: '12'
+        run: |
+          case "$IMAGE_REF" in
+            */*) want="${IMAGE_REF#*/}" ;;
+            *)   want="velnor-${SERVICE}:${IMAGE_REF}" ;;
+          esac
+          svc="velnor-${SERVICE}"
+          check=1
+          while :; do
+            if ! dep="$(aws ecs describe-services --cluster "$CLUSTER" --services "$svc" \
+                   --query "services[0].deployments[?status=='PRIMARY'] | [0].[taskDefinition,rolloutState]" \
+                   --output text 2>&1)"; then
+              echo "::error title=Cannot read ECS service::describe-services failed for $svc. aws said: $dep"
+              exit 1
+            fi
+            read -r td state <<<"$dep"
+            if [ -z "$td" ] || [ "$td" = "None" ]; then
+              echo "::error title=No PRIMARY deployment::$svc has no PRIMARY deployment. aws said: $dep"
+              exit 1
+            fi
+            if ! images="$(aws ecs describe-task-definition --task-definition "$td" \
+                   --query 'taskDefinition.containerDefinitions[].image' --output text 2>&1)"; then
+              echo "::error title=Cannot read task definition::describe-task-definition failed for $td. aws said: $images"
+              exit 1
+            fi
+            match=""
+            for img in $images; do
+              if [ "${img#*/}" = "$want" ]; then match="$img"; fi
+            done
+            if [ -n "$match" ] && [ "$state" = "COMPLETED" ]; then
+              echo "$svc PRIMARY deployment ${td##*/} is COMPLETED and runs $match."
+              exit 0
+            fi
+            if [ -n "$match" ] && [ "$state" = "IN_PROGRESS" ] && [ "$check" -lt "$MAX_CHECKS" ]; then
+              sleep "$POLL_SECONDS"
+              check=$((check + 1))
+              continue
+            fi
+            echo "::error title=Service is not running this deploy's image::$svc PRIMARY deployment is ${td##*/} (rolloutState=$state) with images [$images]. This deploy asked for $want. A circuit-breaker rollback looks exactly like this: the new revision's tasks never reached steady state and ECS went back to the previous one. Recent service events follow."
+            aws ecs describe-services --cluster "$CLUSTER" --services "$svc" \
+              --query 'services[0].events[:10].[createdAt,message]' --output text || true
+            exit 1
+          done
+
+      # -----------------------------------------------------------------------
       # Step 5: (removed) Atlas migrations — LE-372
       # -----------------------------------------------------------------------
       # This step ran `velnor-iac/scripts/atlas_migrate.sh dev` and installed the
