@@ -5,7 +5,7 @@
 # Provides: Stage 3 (Deploy Dev) → Stage 4 (Integration tests)
 #
 # Stage 3 (deploy-dev): auto on every call
-#   tofu apply → ecs update-service → wait stable → atlas migrate → smoke test
+#   wait for image in ECR → tofu apply → ecs update-service → wait stable → smoke test
 # Stage 4 (integration-tests): auto after Stage 3 passes
 #   contract check → isolation audit → concierge classifier smoke
 #
@@ -38,21 +38,27 @@ on:
           113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-chat-api:abc123),
           or a bare tag the iac module expands.
 
-          THE IMAGE MUST ALREADY BE PUSHED WHEN THIS IS CALLED. This template
-          does not and CANNOT wait for it: a reusable workflow has no way to
-          `needs:` a job in the workflow that calls it, so the ordering exists
-          only in the caller. Call this from a job that `needs:` the CI job and
-          gate it on that job's `image-uri` output being non-empty — see the
-          usage block above, and velnor-chat-api's ci.yml for a live example.
+          THE CALLER OWNS THE ORDERING; THIS TEMPLATE OWNS THE GUARD (LE-459).
+          Call this from a job that `needs:` the CI job and gate it on that
+          job's `image-uri` output being non-empty. See the usage block above,
+          and velnor-chat-api's ci.yml for a live example. A reusable workflow
+          cannot `needs:` a job in the workflow that calls it, so that edge
+          exists only in the caller.
 
           A caller that instead puts this in its own push-triggered deploy.yml
-          gets NO ordering at all: both workflows start on the same event and
-          `ecs update-service` runs against a tag that does not exist yet. The
-          symptom is quiet — ECS retries the placement, minimumHealthyPercent
-          keeps the old revision serving, and the deploy usually goes GREEN once
-          the push lands (LE-459: velnor-agent-gateway did exactly that, with a
-          3m28s window; velnor-plane-api's slower rollout exhausted the waiter
-          and went red instead).
+          gets NO ordering: both workflows start on the same event. Before the
+          guard below, `tofu apply` moved ECS onto a tag that did not exist yet
+          (LE-459: velnor-plane-api ea20047 on 2026-08-12, pushed 4m55s after
+          the ECS update; velnor-agent-gateway fa0b124 on 2026-09-13, 3m46s).
+          ECS retried the placement, minimumHealthyPercent kept the old revision
+          serving, and the deploy usually went GREEN once the push landed, so
+          the race read as noise.
+
+          Stage 3 now refuses to mutate anything until this exact tag or digest
+          resolves in ECR (step "Wait for image in ECR", bounded by
+          image_wait_minutes, loud on timeout). With the `needs:` edge that
+          check passes on its first call. Without it the job holds a runner and
+          polls until CI's push lands, or fails if it never does.
         required: true
         type: string
       environment:
@@ -76,6 +82,16 @@ on:
         required: false
         type: boolean
         default: true
+      image_wait_minutes:
+        description: >-
+          How long Stage 3 waits for image_tag to appear in ECR before failing
+          (LE-459). The check runs before any tofu/ECS mutation and returns on
+          its first call when the image is already pushed, so this bounds only
+          the late-image case. 20 covers CI Stage 1 + Stage 2 for a caller that
+          still deploys from a standalone push-triggered deploy.yml.
+        required: false
+        type: number
+        default: 20
     # No `secrets:` block. AWS_ACCOUNT_ID is an environment-scoped VARIABLE
     # (vars.AWS_ACCOUNT_ID), not a secret. There is intentionally no AWS_REGION
     # secret either — the `secrets` context is NOT available in a workflow-level
@@ -157,6 +173,86 @@ jobs:
 
       - name: Verify AWS identity (OIDC smoke test)
         run: aws sts get-caller-identity
+
+      # -----------------------------------------------------------------------
+      # Step 1b: Wait until the EXACT image resolves in ECR (LE-459)
+      #
+      # Runs before any mutation. `tofu apply` moves the service onto the new
+      # task definition by itself (aws_ecs_service.task_definition tracks the
+      # revision), so a check placed after it would be too late.
+      #
+      # Measured on velnor-agent-gateway fa0b124 (2026-09-13): tofu apply ended
+      # 15:21:13Z, first CannotPullContainerError 15:24:21Z, CI "Push image to
+      # ECR" ran 15:24:52Z-15:25:01Z (imagePushedAt 15:25:01.5Z), first task
+      # started 15:25:11Z. The error came before the push even STARTED, so the
+      # cause is ordering, not ECR propagation lag.
+      #
+      # Three outcomes, never a fourth:
+      #   present        -> proceed on the first call. No sleep: a deploy whose
+      #                     image is already pushed pays one API call.
+      #   ImageNotFound  -> poll every POLL_SECONDS, bounded by
+      #                     image_wait_minutes, then fail loudly.
+      #   anything else  -> fail NOW with aws's own message. AccessDenied or a
+      #                     missing repository will not fix itself by waiting,
+      #                     and must never read as "not pushed yet" (.github#47).
+      #
+      # Needs ecr:DescribeImages on velnor-* for velnor-github-deploy (velnor-iac,
+      # LE-459). Without it this step fails every deploy on its first call with
+      # AccessDenied: loudly, by design.
+      #
+      # Inputs arrive through env and never as ${{ }} inside the script, so
+      # scripts/test_deploy_wait_for_image.py executes this exact block against a
+      # fake `aws`.
+      # -----------------------------------------------------------------------
+      - name: Wait for image in ECR
+        id: wait-for-image
+        env:
+          IMAGE_REF: ${{ inputs.image_tag }}
+          SERVICE: ${{ inputs.service }}
+          WAIT_MINUTES: ${{ inputs.image_wait_minutes }}
+          POLL_SECONDS: '10'
+        run: |
+          # image_tag is a bare tag (the iac module expands it to
+          # velnor-<service>:<tag>) or a full ECR URI, by tag or by digest.
+          case "$IMAGE_REF" in
+            */*) path="${IMAGE_REF#*/}" ;;
+            *)   path="velnor-${SERVICE}:${IMAGE_REF}" ;;
+          esac
+          if [[ "$path" == *@* ]]; then
+            repo="${path%%@*}"; repo="${repo%%:*}"; id="imageDigest=${path#*@}"
+          elif [[ "$path" == *:* ]]; then
+            repo="${path%:*}"; id="imageTag=${path##*:}"
+          else
+            echo "::error title=Unusable image_tag::'$IMAGE_REF' names no tag or digest."
+            exit 1
+          fi
+
+          interval="$POLL_SECONDS"
+          max_checks=$(( (WAIT_MINUTES * 60 + interval - 1) / interval ))
+          if [ "$max_checks" -lt 1 ]; then max_checks=1; fi
+
+          check=1
+          while :; do
+            if out="$(aws ecr describe-images --repository-name "$repo" \
+                   --image-ids "$id" \
+                   --query 'imageDetails[0].imagePushedAt' --output text 2>&1)"; then
+              echo "Image $repo ($id) is in ECR, imagePushedAt=$out (check $check of $max_checks)."
+              exit 0
+            fi
+            if [[ "$out" != *ImageNotFoundException* ]]; then
+              echo "::error title=Cannot read ECR::describe-images failed for $repo ($id) with something other than not-pushed-yet. Not deploying. aws said: $out"
+              exit 1
+            fi
+            if [ "$check" -ge "$max_checks" ]; then
+              echo "::error title=Image never appeared in ECR::$repo ($id) was still absent after $WAIT_MINUTES min ($check checks). Not deploying, because ECS would retry CannotPullContainerError indefinitely. Did CI Stage 2 (build, push) fail or never run for this commit?"
+              exit 1
+            fi
+            if [ "$check" -eq 1 ]; then
+              echo "Image $repo ($id) is not in ECR yet. Polling every ${interval}s for up to $WAIT_MINUTES min."
+            fi
+            sleep "$interval"
+            check=$((check + 1))
+          done
 
       # -----------------------------------------------------------------------
       # Step 2: tofu apply — update ECS task definition for this service
