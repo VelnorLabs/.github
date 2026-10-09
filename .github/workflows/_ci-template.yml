@@ -296,6 +296,30 @@ jobs:
         # unavailable on Free-plan private repos, same as the image scan below.
 
       # -----------------------------------------------------------------------
+      # Registry login for base images (Docker Hub rate limit).
+      #
+      # Dockerfiles pull their base images through the ECR pull-through cache
+      # (<acct>.dkr.ecr.us-east-1.amazonaws.com/docker-hub/...) instead of
+      # docker.io, because anonymous Docker Hub pulls from shared runner IPs hit
+      # "toomanyrequests". That registry needs a login, and this stage runs on
+      # pull_request, so it assumes velnor-github-actions-image-pull (velnor-iac
+      # accounts/dev/github_image_pull_role.tf): main + same-org PR trust, pull
+      # and cache-miss import on docker-hub/* only, pushes explicitly denied.
+      # NOT velnor-github-actions, which can push and sign and trusts main only.
+      # -----------------------------------------------------------------------
+      - name: Configure AWS credentials for base-image pulls (OIDC)
+        if: inputs.language != 'terraform'
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502  # v4.0.2
+        with:
+          role-to-assume: 'arn:aws:iam::${{ vars.AWS_ACCOUNT_ID || ''113831183566'' }}:role/velnor-github-actions-image-pull'
+          aws-region: ${{ inputs.aws-region }}
+          role-session-name: gha-pull-${{ github.run_id }}
+
+      - name: Login to Amazon ECR (pull-through cache)
+        if: inputs.language != 'terraform'
+        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076  # v2.0.1
+
+      # -----------------------------------------------------------------------
       # Build container image (local — not pushed yet)
       # Skipped for terraform language (no container artifact).
       # -----------------------------------------------------------------------
