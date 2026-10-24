@@ -127,6 +127,12 @@ jobs:
       - name: Deploy PRIMARY-verify tests (scripts/test_deploy_verify_primary.py)
         run: .venv/bin/python -m pytest scripts/test_deploy_verify_primary.py -q
 
+      # 2026-10-24: the deployed image must carry deployed-<sha> before ECS
+      # runs it, or ECR's count rule can expire it mid-run (plane-api and
+      # plane-setup could not restart). Executes the step against a fake aws.
+      - name: Deploy image-protection tests (scripts/test_deploy_protect_image.py)
+        run: .venv/bin/python -m pytest scripts/test_deploy_protect_image.py -q
+
       # PINNED, and do not put @latest back. This job lints files that are
       # otherwise unchanged for weeks; an unpinned linter means the day
       # upstream adds a rule, every open PR in this repo goes red on files

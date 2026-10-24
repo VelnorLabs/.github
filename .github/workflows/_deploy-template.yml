@@ -5,7 +5,8 @@
 # Provides: Stage 3 (Deploy Dev) → Stage 4 (Integration tests)
 #
 # Stage 3 (deploy-dev): auto on every call
-#   wait for image in ECR → tofu apply → ecs update-service → wait stable → smoke test
+#   wait for image in ECR → protect it (deployed-<sha> tag) → tofu apply →
+#   ecs update-service → wait stable → smoke test
 # Stage 4 (integration-tests): auto after Stage 3 passes
 #   contract check → isolation audit → concierge classifier smoke
 #
@@ -253,6 +254,106 @@ jobs:
             sleep "$interval"
             check=$((check + 1))
           done
+
+      # -----------------------------------------------------------------------
+      # Step 1c: Protect the deployed image from ECR lifecycle expiry
+      #
+      # On 2026-10-24 velnor-plane-api and velnor-plane-setup could not start a
+      # task (CannotPullContainerError): ECR's catch-all "keep last N" lifecycle
+      # rule had expired the images they were RUNNING. ECR does not know an
+      # image is in use; it only counts. velnor-iac accounts/dev/ecr now has a
+      # rule that OWNS every image tagged deployed-*, so the catch-all rule can
+      # never expire it. This step puts that tag on the exact digest this deploy
+      # is about to run, after the image exists and before `tofu apply` points
+      # ECS at it.
+      #
+      # Tag: deployed-<git-sha>, where <git-sha> is the image's own 40-hex tag
+      # (every Velnor build tags its image with its commit). Under IMMUTABLE
+      # tags `<sha>` names one digest per repo, so deployed-<sha> does too, and
+      # services sharing a repo and a build (plane-api, plane-setup) share it.
+      # An image without exactly one 40-hex tag gets deployed-<digest-hex>
+      # instead: never a guess. Same rule as velnor-iac
+      # scripts/tag_deployed_image.sh, the workstation equivalent.
+      #
+      # How: ECR adds a tag via put-image of the image's EXISTING manifest. The
+      # manifest is written byte-for-byte to a file (jq -j: no added newline)
+      # and sent with --image-digest, so ECR rejects the call rather than
+      # create a new image if the bytes do not hash to that digest. IMMUTABLE
+      # repos refuse to MOVE a tag; ImageAlreadyExists (this tag already on this
+      # digest: a redeploy or rollback) is success. The tag is read back and
+      # must resolve to the same digest.
+      #
+      # FAIL-CLOSED, like the wait above: if the image cannot be protected the
+      # deploy stops BEFORE any mutation, rather than move ECS onto an image the
+      # lifecycle policy may delete. Needs ecr:BatchGetImage + ecr:PutImage on
+      # velnor-* for velnor-github-deploy (velnor-iac
+      # velnor-github-deploy-ecr-tag-deployed) — APPLY that before merging this.
+      #
+      # Inputs arrive through env and never as ${{ }} inside the script, so
+      # scripts/test_deploy_protect_image.py executes this exact block against a
+      # fake `aws`.
+      # -----------------------------------------------------------------------
+      - name: Protect the deployed image from ECR lifecycle expiry
+        id: protect-image
+        env:
+          IMAGE_REF: ${{ inputs.image_tag }}
+          SERVICE: ${{ inputs.service }}
+        run: |
+          # Same image_tag forms as "Wait for image in ECR".
+          case "$IMAGE_REF" in
+            */*) path="${IMAGE_REF#*/}" ;;
+            *)   path="velnor-${SERVICE}:${IMAGE_REF}" ;;
+          esac
+          if [[ "$path" == *@* ]]; then
+            repo="${path%%@*}"; repo="${repo%%:*}"; id="imageDigest=${path#*@}"
+          elif [[ "$path" == *:* ]]; then
+            repo="${path%:*}"; id="imageTag=${path##*:}"
+          else
+            echo "::error title=Unusable image_tag::'$IMAGE_REF' names no tag or digest."
+            exit 1
+          fi
+
+          fail() { # title message [aws output]
+            echo "::error title=$1::$2 Not deploying: an unprotected image can be expired by the ECR lifecycle policy while it runs (2026-10-24). ${3:+aws said: $3}"
+            exit 1
+          }
+
+          if ! desc="$(aws ecr describe-images --repository-name "$repo" --image-ids "$id" \
+                 --query 'imageDetails[0]' --output json 2>&1)"; then
+            fail "Cannot read ECR" "describe-images failed for $repo ($id)." "$desc"
+          fi
+          digest="$(jq -r '.imageDigest // empty' <<<"$desc")"
+          [[ "$digest" == sha256:* ]] || fail "Cannot read ECR" "No digest for $repo ($id)." "$desc"
+          if jq -e '(.imageTags // []) | any(startswith("deployed-") or startswith("migrate-"))' <<<"$desc" >/dev/null; then
+            echo "$repo $digest is already protected [$(jq -r '(.imageTags // []) | join(",")' <<<"$desc")]."
+            exit 0
+          fi
+          sha="$(jq -r '[(.imageTags // [])[] | select(test("^[0-9a-f]{40}$"))] | if length == 1 then .[0] else empty end' <<<"$desc")"
+          tag="deployed-${sha:-${digest#sha256:}}"
+
+          work="$(mktemp -d)"
+          if ! out="$(aws ecr batch-get-image --repository-name "$repo" \
+                 --image-ids "imageDigest=$digest" --output json 2>&1)"; then
+            fail "Cannot read the image manifest" "batch-get-image failed for $repo $digest." "$out"
+          fi
+          [ "$(jq '.images | length' <<<"$out")" = 1 ] || fail "Cannot read the image manifest" "batch-get-image returned no single image for $repo $digest." "$out"
+          jq -j '.images[0].imageManifest' <<<"$out" >"$work/manifest"
+          mt="$(jq -r '.images[0].imageManifestMediaType // empty' <<<"$out")"
+
+          if ! out="$(aws ecr put-image --repository-name "$repo" --image-tag "$tag" \
+                 --image-digest "$digest" --image-manifest "file://$work/manifest" \
+                 ${mt:+--image-manifest-media-type "$mt"} --output json 2>&1)"; then
+            if [[ "$out" == *ImageTagAlreadyExistsException* ]]; then
+              fail "deployed tag collision" "$repo already has $tag on a DIFFERENT digest (IMMUTABLE tags cannot move); $digest was NOT protected." "$out"
+            elif [[ "$out" != *ImageAlreadyExistsException* ]]; then
+              fail "Cannot tag the deployed image" "put-image $repo:$tag failed; $digest was NOT protected." "$out"
+            fi
+          fi
+          if ! got="$(aws ecr describe-images --repository-name "$repo" --image-ids "imageTag=$tag" \
+                 --query 'imageDetails[0].imageDigest' --output text 2>&1)" || [ "$got" != "$digest" ]; then
+            fail "deployed tag did not resolve" "$repo:$tag resolves to '$got', not $digest." "$got"
+          fi
+          echo "Protected $repo $digest as $tag."
 
       # -----------------------------------------------------------------------
       # Step 2: tofu apply — update ECS task definition for this service
