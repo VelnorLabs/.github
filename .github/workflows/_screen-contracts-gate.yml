@@ -91,7 +91,7 @@ on:
 jobs:
   screen-contracts-gate:
     name: Screen contracts gate (every route has a green contract; every bound op is callable)
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.RUNNER_LINUX || 'ubuntu-24.04' }}
     permissions:
       contents: read
     env:

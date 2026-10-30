@@ -55,7 +55,7 @@ on:
 jobs:
   contract-coverage-gate:
     name: Contract coverage gate (routes and calls declared in the spec)
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.RUNNER_LINUX || 'ubuntu-24.04' }}
     permissions:
       contents: read
     env:
