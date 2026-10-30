@@ -72,7 +72,7 @@ on:
 jobs:
   design-tokens-gate:
     name: Design tokens gate (no hardcoded styles)
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.RUNNER_LINUX || 'ubuntu-24.04' }}
     permissions:
       contents: read
     steps:
