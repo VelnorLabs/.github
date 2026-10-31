@@ -126,7 +126,7 @@ jobs:
     # referred to no-op'd on every deploy and has been removed. A stage name is
     # read as a claim about what the stage does.
     name: Stage 3 · tofu apply → ECS update → smoke
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LINUX || 'ubuntu-latest' }}
     # Two gates, both required:
     #   1. AWS_ACCOUNT_ID set (account wired).
     #   2. DEPLOY_DEV_ENABLED == 'true' — an explicit opt-in flipped ONLY after the
@@ -679,7 +679,7 @@ jobs:
   integration-tests:
     name: Stage 4 · contract check → isolation audit → concierge classifier
     needs: deploy-dev
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER_LINUX || 'ubuntu-latest' }}
     permissions:
       id-token: write    # OIDC for AWS CodeBuild + agent-gateway calls
       contents: read
