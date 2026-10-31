@@ -57,7 +57,7 @@ on:
 jobs:
   schema-bypass-check:
     name: Schema bypass check (Q-2)
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.RUNNER_LINUX || 'ubuntu-24.04' }}
     permissions:
       contents: read
       pull-requests: write   # needed to post a PR comment on failure

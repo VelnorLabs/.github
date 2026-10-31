@@ -106,7 +106,7 @@ on:
 jobs:
   eval-on-pr:
     name: eval/on-pr
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.RUNNER_LINUX || 'ubuntu-24.04' }}
     # NO job-level `permissions:` block, deliberately. A job-level block
     # REPLACES inheritance, and a called workflow that requests a scope its
     # caller did not grant fails the whole run at startup. Declaring
