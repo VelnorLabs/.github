@@ -345,20 +345,52 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Container boot smoke test
         if: inputs.language != 'terraform' && inputs.health-check
+        shell: bash
+        env:
+          SERVICE_NAME: ${{ inputs.service-name }}
+          PORT: ${{ inputs.health-port }}
+          IMAGE_SHA: ${{ github.sha }}
         run: |
-          PORT="${{ inputs.health-port }}"
-          docker run -d --name smoke-${{ inputs.service-name }} \
-            -p "${PORT}:${PORT}" "${{ inputs.service-name }}:${{ github.sha }}"
-          sleep 5
-          curl -sf "http://localhost:${PORT}/healthz"
-          STATUS=$(curl -o /dev/null -w "%{http_code}" "http://localhost:${PORT}/readyz")
+          set -euo pipefail
+          container="smoke-${SERVICE_NAME}"
+          cleanup() {
+            result=$?
+            if [ "$result" -ne 0 ]; then
+              docker logs "$container" || true
+            fi
+            docker rm -f "$container" >/dev/null 2>&1 || true
+            exit "$result"
+          }
+          trap cleanup EXIT
+          docker run -d --name "$container"             -p "${PORT}:${PORT}" "${SERVICE_NAME}:${IMAGE_SHA}"
+          healthy=false
+          # Slow imports and connection resets are expected before the socket is
+          # ready. Still require HTTP 200; at most 30 bounded probes (~90 seconds).
+          for attempt in $(seq 1 30); do
+            if [ "$(docker inspect -f '{{.State.Running}}' "$container")" != true ]; then
+              echo "container exited before becoming healthy"
+              exit 1
+            fi
+            status=$(curl -sS --connect-timeout 1 --max-time 2 -o /dev/null               -w '%{http_code}' "http://localhost:${PORT}/healthz" 2>/dev/null) || status=000
+            if [ "$status" = 200 ]; then
+              healthy=true
+              break
+            fi
+            echo "healthz probe ${attempt}/30: not ready (${status})"
+            sleep 1
+          done
+          if [ "$healthy" != true ]; then
+            echo "container did not become healthy within the startup budget"
+            exit 1
+          fi
+          STATUS=$(curl -sS --connect-timeout 1 --max-time 5 -o /dev/null             -w '%{http_code}' "http://localhost:${PORT}/readyz")
           echo "readyz status: $STATUS"
           if [ "$STATUS" = "503" ]; then
             echo "readyz correctly 503 (deps not wired in CI)"
           else
-            echo "unexpected readyz status: $STATUS"; docker logs smoke-${{ inputs.service-name }}; exit 1
+            echo "unexpected readyz status: $STATUS"
+            exit 1
           fi
-          docker stop smoke-${{ inputs.service-name }}
 
       # -----------------------------------------------------------------------
       # Trivy vulnerability scan — fail on CRITICAL or HIGH
