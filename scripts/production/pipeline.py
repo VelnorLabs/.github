@@ -8,6 +8,7 @@ every stage must return a release-bound receipt from its versioned S3 artifact.
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -42,6 +43,14 @@ def canonical(value):
 
 def digest(value):
     return hashlib.sha256(canonical(value)).hexdigest()
+
+
+def enforce_window(policy, now=None):
+    require(policy.get("schema_version") == 1, "unsupported deployment policy")
+    earliest = datetime.fromisoformat(policy["production_not_before"])
+    require(earliest.tzinfo is not None, "deployment window must include a timezone offset")
+    now = now or datetime.now(timezone.utc)
+    require(now >= earliest, f"production changes are held until {policy['production_not_before']} ({policy['timezone']}); readiness and approval are still required")
 
 
 def read_json(path):
@@ -427,6 +436,8 @@ def main():
             f.write(summary)
     if args.operation == "preview":
         return
+    if args.operation in ("release", "infra-apply"):
+        enforce_window(read_json(ROOT / "production/policy.json"))
     require(os.environ.get("GITHUB_REF") == "refs/heads/main", "production controller must run from main")
     require(os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch", "production requires manual dispatch")
     require(os.environ.get("PRODUCTION_PIPELINES_ENABLED") == "true", "production pipelines are not activated")

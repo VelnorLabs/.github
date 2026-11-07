@@ -134,7 +134,7 @@ jobs:
         run: .venv/bin/python -m pytest scripts/test_deploy_protect_image.py -q
 
       - name: Production promotion gates and receipt regression tests
-        run: .venv/bin/python -m pytest scripts/production/test_pipeline.py -q
+        run: .venv/bin/python -m pytest scripts/production -q
 
       - name: Draft production release validates without cloud access
         run: .venv/bin/python scripts/production/pipeline.py preview

@@ -5,6 +5,13 @@ deployment before its intentionally unwired migration gate. Development CI and
 deployment templates are unchanged. Nothing in this change activates production,
 creates AWS resources, changes GitHub settings, or chooses application versions.
 
+## Release policy
+
+See [RELEASE-STRATEGY.md](RELEASE-STRATEGY.md) for branch ownership, Development
+capture, immutable release candidates and production-versus-candidate deltas.
+Production apply/promotion is held until November 10, 2026, 00:00 America/Chicago
+by `policy.json`; the date alone does not approve or trigger deployment.
+
 ## Delivered
 
 - `production-infrastructure.yml`: offline preview, saved infrastructure plan,
@@ -29,7 +36,7 @@ development can continue independently until the release manifest is frozen.
 
 ```sh
 python3 scripts/production/pipeline.py preview
-python3 -m pytest scripts/production/test_pipeline.py -q
+python3 -m pytest scripts/production -q
 python3 scripts/check_workflows.py
 actionlint -no-color -oneline
 ```
