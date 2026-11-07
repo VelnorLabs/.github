@@ -103,9 +103,6 @@ KNOWN_LOCAL_ONLY_VIOLATIONS = {
         "needs aws-actions/configure-aws-credentials, so the OIDC path out of "
         "this repo is dead too, not just the checkout."
     ),
-    "promote-to-production.yml": (
-        "LE-397 — same as promote-to-staging, and the worse place to find out."
-    ),
 }
 
 SELF_TRIGGERED = {
