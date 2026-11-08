@@ -12,6 +12,17 @@ capture, immutable release candidates and production-versus-candidate deltas.
 Production apply/promotion is held until November 10, 2026, 00:00 America/Chicago
 by `policy.json`; the date alone does not approve or trigger deployment.
 
+## Repository versions and human approval
+
+Nineteen platform repositories now have prepared release-workflow callers. Each
+uses reviewed release-lock PRs and immutable `release/vX.Y.Z` releases; native
+package versions remain separate. The platform manifest pins those versions,
+source SHAs, artifacts and lock checksums. Production checks published release
+evidence and requires `Velnor-ai` approval for the current workflow run.
+Activation settings and remaining operational gates are listed in
+[RELEASE-STRATEGY.md](RELEASE-STRATEGY.md). These are prepared pipelines, not an
+assertion that production infrastructure or release evidence is ready.
+
 ## Delivered
 
 - `production-infrastructure.yml`: offline preview, saved infrastructure plan,

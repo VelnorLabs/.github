@@ -41,12 +41,15 @@ def compare(base, candidate, initial=False):
             state = "source-changed"
         elif old.get("artifacts") != new.get("artifacts"):
             state = "artifact-changed"
+        elif old.get("version") != new.get("version") or old.get("release_lock_sha256") != new.get("release_lock_sha256"):
+            state = "release-version-changed"
         else:
             state = "unchanged"
         link = None
         if old and new and old_sha and new_sha and old["repository"] == new["repository"] and old_sha != new_sha:
             link = f"https://github.com/{new['repository']}/compare/{old_sha}...{new_sha}"
         changes.append({"component": name, "status": state, "from_sha": old_sha, "to_sha": new_sha,
+                        "from_version": (old or {}).get("version"), "to_version": (new or {}).get("version"),
                         "artifacts_changed": (old or {}).get("artifacts") != (new or {}).get("artifacts"), "compare_url": link})
     operations = []
     before, after = previous.get("operations", {}), candidate.get("operations", {})
@@ -65,10 +68,10 @@ def compare(base, candidate, initial=False):
 
 def markdown(report):
     lines = ["# Release delta", "", f"Baseline: {report['baseline']}", f"Candidate: {report['candidate']}", "",
-             "| Component | Change | From | To | Source diff |", "| --- | --- | --- | --- | --- |"]
+             "| Component | Change | From version | To version | From SHA | To SHA | Source diff |", "| --- | --- | --- | --- | --- | --- | --- |"]
     for item in report["components"]:
         link = f"[Compare]({item['compare_url']})" if item["compare_url"] else "—"
-        lines.append(f"| {item['component']} | {item['status']} | {item['from_sha'] or 'unknown/absent'} | {item['to_sha'] or 'unknown/absent'} | {link} |")
+        lines.append(f"| {item['component']} | {item['status']} | {item['from_version'] or 'unknown/absent'} | {item['to_version'] or 'unknown/absent'} | {item['from_sha'] or 'unknown/absent'} | {item['to_sha'] or 'unknown/absent'} | {link} |")
     lines += ["", "## Deployment/configuration changes"]
     lines += [f"- {o['binding']}: {o['status']} (compare operation objects in the manifests)." for o in report["operations"]]
     if not report["operations"]:

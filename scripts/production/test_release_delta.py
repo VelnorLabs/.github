@@ -64,3 +64,14 @@ def test_tuesday_chicago_window(now, allowed):
     else:
         with pytest.raises(GateError, match="held until"):
             enforce_window(policy, datetime.fromisoformat(now))
+
+
+def test_version_only_delta_is_visible():
+    from release_delta import compare, markdown
+    import copy
+    base={'schema_version':1,'components':{'web':{'repository':'VelnorLabs/velnor-web','source_sha':'a'*40,'artifacts':[],'version':'1.0.0'}}}
+    candidate=copy.deepcopy(base)
+    candidate['components']['web']['version']='1.0.1'
+    report=compare(base,candidate)
+    assert report['components'][0]['status']=='release-version-changed'
+    assert '1.0.0' in markdown(report) and '1.0.1' in markdown(report)
