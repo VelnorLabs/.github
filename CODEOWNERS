@@ -34,3 +34,5 @@ codeowners-templates/CODEOWNERS.schemas         @VelnorLabs/pm @VelnorLabs/engin
 # Production release manifests and execution adapters
 /production/                                    @VelnorLabs/engineering @VelnorLabs/infra-leads
 /scripts/production/                            @VelnorLabs/engineering @VelnorLabs/infra-leads
+
+/scripts/releases/                              @VelnorLabs/engineering @VelnorLabs/infra-leads

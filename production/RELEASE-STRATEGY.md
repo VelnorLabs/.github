@@ -174,3 +174,93 @@ Branch workflow reference: [GitHub flow](https://docs.github.com/en/get-started/
 The manifest, environment-record and promotion rules above are the proposed
 Velnor operating policy, not a claim that GitHub settings or live inventory
 automation are already configured.
+
+## Reviewed repository versions (Development → Production)
+
+Every platform repository has a `repository-release.yml` caller, pinned to a
+reviewed commit of the shared `_repository-release.yml` controller. It validates
+release-lock PRs and manually publishes reviewed versions. It does not build or
+deploy on tag creation. The existing main/Development workflows remain intact.
+
+Repository deployment-snapshot tags use `release/vMAJOR.MINOR.PATCH`, independently
+per repository. This deliberately avoids triggering native `v*` schema/Go package
+publication or replacing existing npm/Python versions. Record those native versions
+in `native_versions`; bump package manifests using their existing checks. Start each
+repository's deployment sequence at an explicitly reviewed version; do not infer
+that every component must be 1.0.0 or have the same version. Use major for breaking
+contracts, minor for backward-compatible features, patch for compatible fixes.
+
+1. Continue short `feat/*` and `fix/*` branches into `main`. Validate and deploy to
+   Development using existing workflows. No staging branch or environment.
+2. Select the exact successful Development SHA. Build once where configuration
+   permits; retain image digests, S3 object versions and checksums. Frontend builds
+   with production configuration need separate provenance and production-config
+   validation; a Development bundle cannot simply be relabelled.
+3. Create `release/<version>` from main. Add or replace only
+   `.release/release-lock.json`, following the example in that repository. Include
+   CI and actual Development deploy/verification runs, required successful job
+   names, native package versions, smoke evidence, known limitations and artifacts.
+   Source-only libraries/IaC may have empty artifact lists; runtime artifacts must
+   be recorded before promotion. Evidence text is a reviewer attestation; the
+   publisher verifies run identity/jobs, not live AWS state or application semantics.
+4. Open a normal release PR. An independent repository writer must approve its
+   final head. Approval of an older revision is insufficient. Merge to main only
+   after required checks pass. A sole contributor cannot self-approve this PR:
+   assign another authorized writer or an authorized release bot as PR author.
+5. Enable repository release immutability and `REPOSITORY_RELEASES_ENABLED=true`
+   after reviewing the pipeline. Dispatch `Repository release` on main with that
+   merged PR number. The publisher validates approval, ancestry, exact main CI,
+   non-skipped required jobs and Development attestation, then creates an immutable
+   GitHub release pointing at the original validated SHA, not the metadata merge.
+   Existing tags are never overwritten. No production deployment is triggered.
+6. In the central platform manifest, select each repository `version`, `source_sha`,
+   `release_lock_sha256`, CI reference and matching artifacts. Unchanged components
+   retain their prior versions. Generate/review the production-to-candidate delta.
+   A changed candidate is a new RC/manifest review, never a moved version tag.
+7. After readiness, manually dispatch the central workflow on main. The protected
+   `production` environment must require exactly `Velnor-ai` and disable admin
+   bypass. The controller also checks the run's approval history before AWS access.
+   Use a fresh dispatch after failures; reruns are blocked to avoid stale approval.
+8. Observe staged execution receipts and final onboarding verification. Record
+   actual deployed versions, time, approver, run IDs and manifest digest. A partial
+   rollout is a mixed inventory until every required stage is verified.
+
+## Activation and remaining readiness work
+
+- Merge the central draft PR before enabling repository callers; review their pinned
+  controller SHA and grant Actions access to the shared workflow if required.
+- Merge each repository pipeline PR. Configure immutable GitHub releases before
+  setting `REPOSITORY_RELEASES_ENABLED`. Configure the repository secret
+  `RELEASE_GOVERNANCE_READ_TOKEN` with Administration: read for the immutability
+  settings endpoint. It is separate from the contents-write GITHUB_TOKEN and must
+  have no production permissions. The publisher checks the setting at runtime.
+- Protect main with required CI, stale-review dismissal and no force pushes. Protect
+  `release/v*` tags, restrict workflow changes, and require CODEOWNERS review. Private
+  repository protection depends on the organization's GitHub plan; pipeline checks
+  are not a substitute for repository governance or protection against a malicious
+  administrator. Audit effective settings before the first release.
+- Configure `.github` production required reviewer `Velnor-ai`, disable admin bypass,
+  and restrict deployment branches to main. Self-review prevention can only be
+  enabled if a different identity initiates the workflow; do not inadvertently
+  deadlock the sole named approver. The job still requires an explicit approval.
+- Give the production source-read token read access to release metadata, Actions,
+  and environment approval history. Separate publisher contents-write permissions
+  from production OIDC roles; publishers have no production cloud credentials.
+- Complete production accounts/IAM, CodeBuild bindings, artifact retention/signature
+  verification, backup/restore exercise, safe database migration rehearsal in
+  Development, monitoring, alerts, rollback rehearsal and onboarding smoke evidence.
+  Review cross-service and schema compatibility against the complete pinned set.
+- With no staging, freeze the candidate briefly in Development for platform-level
+  smoke/tenant-isolation checks. New main commits may continue afterwards but do
+  not change the pinned candidate. Use feature flags, backward-compatible migrations,
+  and a limited initial onboarding cohort with explicit stop/rollback criteria.
+- Mobile is versioned in the inventory. App-store signing, review and distribution
+  are a separate release gate; the central AWS workflow does not publish mobile apps.
+  Agree whether mobile distribution is required for the initial onboarding release.
+- Tuesday 2026-11-10 America/Chicago is an earliest boundary, not a schedule or
+  readiness assertion. No versions, settings, releases or production resources were
+  activated by preparing these PRs.
+
+GitHub references: [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases),
+[environment protection](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments),
+[workflow approval history](https://docs.github.com/en/rest/actions/workflow-runs#get-the-review-history-for-a-workflow-run).

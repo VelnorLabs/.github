@@ -35,7 +35,7 @@ def ready(draft):
     r["state"] = "ready"
     t.update(account_id=ACCOUNT, region=REGION, receipt_bucket="velnor-prod-receipts", runner_image=IMAGE, receipt_kms_key_arn=f"arn:aws:kms:{REGION}:{ACCOUNT}:key/abc-def")
     for c in r["components"].values():
-        c.update(source_sha=SHA, ci_run_id=1, ci_workflow=".github/workflows/ci.yml", artifacts=[])
+        c.update(source_sha=SHA, ci_run_id=1, ci_workflow=".github/workflows/ci.yml", artifacts=[], version="1.0.0", release_lock_sha256=HASH)
     for name, b in t["projects"].items():
         b["name"] = "velnor-prod-" + name
         stage = b["stage"]

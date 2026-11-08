@@ -59,6 +59,7 @@ CI_WORKFLOW = "ci.yml"
 # are context for a reader, not something this script verifies — it cannot see
 # other repos.
 CALLED_BY_OTHER_REPOS = {
+    "_repository-release.yml": "19 versioned platform repositories",
     "_ci-template.yml": "every service repo's ci.yml (~94 caller files)",
     "_deploy-template.yml": "every service repo's deploy.yml (~68)",
     "_sdk-bypass-check.yml": "every Go/Python service (~69)",

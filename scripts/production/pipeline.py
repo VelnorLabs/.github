@@ -152,7 +152,7 @@ def validate(release, targets, ready=False, scope="release"):
     for name, c in release["components"].items():
         require(NAME.fullmatch(name), "invalid component name")
         require(REPO.fullmatch(c.get("repository", "")), f"invalid repository: {name}")
-        for field in ("source_sha", "ci_run_id", "ci_workflow"):
+        for field in ("source_sha", "ci_run_id", "ci_workflow", "version", "release_lock_sha256"):
             if c.get(field) is None:
                 missing.append(f"components.{name}.{field}")
         if c.get("source_sha") is not None:
@@ -444,9 +444,12 @@ def main():
     selected_components = None
     if args.operation in ("infra-plan", "infra-apply"):
         selected_components = {targets["projects"][x]["component"] for x in release["stages"][args.operation]}
+    from release_gate import approval, versions
+    versions(github, release, selected_components)
     verify_ci(release, selected_components)
     if args.operation == "check-ci":
         return
+    approval(github, read_json(ROOT / "production/policy.json"))
     verify_identity(targets)
     require(args.operation != "infra-apply" or HASH.fullmatch(args.plan_sha256),
             "infra-apply requires the reviewed saved plan SHA256")
