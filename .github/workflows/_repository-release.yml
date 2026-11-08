@@ -14,10 +14,13 @@ on:
     secrets:
       RELEASE_GOVERNANCE_READ_TOKEN:
         required: false
-permissions:
-  contents: read
+# Permissions are supplied by the caller: PR validation is read-only;
+# manual publication explicitly grants contents:write. Do not request elevated
+# permissions in a skipped nested job: GitHub checks them before scheduling.
 jobs:
   validate:
+    permissions:
+      contents: read
     if: '!inputs.publish'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -44,10 +47,6 @@ jobs:
     concurrency:
       group: repository-release
       cancel-in-progress: false
-    permissions:
-      contents: write
-      actions: read
-      pull-requests: read
     steps:
       - name: Publish only a reviewed and Development-validated immutable version
         env:
