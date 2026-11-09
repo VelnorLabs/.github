@@ -136,6 +136,9 @@ jobs:
       - name: Container boot probe regression tests
         run: .venv/bin/python -m pytest scripts/test_ci_boot.py -q
 
+      - name: Immutable release retry guards
+        run: .venv/bin/python -m pytest scripts/test_release_retry.py -q
+
       # PINNED, and do not put @latest back. This job lints files that are
       # otherwise unchanged for weeks; an unpinned linter means the day
       # upstream adds a rule, every open PR in this repo goes red on files
