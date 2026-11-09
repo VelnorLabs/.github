@@ -550,7 +550,7 @@ jobs:
       id-token: write    # OIDC token for AWS + cosign
       contents: read
     outputs:
-      image-uri: ${{ steps.image-meta.outputs.image-uri }}
+      image-uri: ${{ steps.image-ref.outputs.image-uri }}
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
@@ -582,7 +582,45 @@ jobs:
           echo "image-uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
           echo "Building and pushing: $IMAGE_URI"
 
+      # A failed SBOM/signing download can leave an immutable SHA tag behind.
+      # Resume only an image whose source labels match this exact checkout;
+      # the KMS signature is verified below before it can be released.
+      - name: Inspect existing immutable release image
+        id: existing-image
+        env:
+          RELEASE_ACCOUNT: ${{ vars.AWS_ACCOUNT_ID }}
+          RELEASE_REPOSITORY: ${{ inputs.service-name }}
+          RELEASE_SHA: ${{ github.sha }}
+          RELEASE_SOURCE: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [[ "$RELEASE_ACCOUNT" != '113831183566' ]]; then
+            echo 'exists=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if aws ecr describe-images --repository-name "$RELEASE_REPOSITORY" \
+              --image-ids "imageTag=$RELEASE_SHA" --query 'imageDetails[0].imageDigest' \
+              --output text > release-digest.txt 2> release-lookup-error.txt; then
+            digest=$(cat release-digest.txt)
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+            image="${ECR_REGISTRY}/${RELEASE_REPOSITORY}@${digest}"
+            docker pull "$image"
+            revision=$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')
+            source=$(docker image inspect "$image" --format '{{index .Config.Labels "org.opencontainers.image.source"}}')
+            if [[ "$revision" != "$RELEASE_SHA" || "$source" != "$RELEASE_SOURCE" ]]; then
+              echo 'Existing image does not match the reviewed source' >&2
+              exit 1
+            fi
+            echo 'exists=true' >> "$GITHUB_OUTPUT"
+          elif grep -q '(ImageNotFoundException)' release-lookup-error.txt; then
+            echo 'exists=false' >> "$GITHUB_OUTPUT"
+          else
+            cat release-lookup-error.txt >&2
+            exit 1
+          fi
+
       - name: Build Docker image
+        if: steps.existing-image.outputs.exists == 'false'
         env:
           VELNOR_SDK_READ_TOKEN: ${{ secrets.VELNOR_SDK_READ_TOKEN }}
         run: |
@@ -594,7 +632,28 @@ jobs:
             .
 
       - name: Push image to ECR
+        if: steps.existing-image.outputs.exists == 'false'
         run: docker push "${{ steps.image-meta.outputs.image-uri }}"
+
+      - name: Resolve exact release digest
+        id: image-ref
+        env:
+          RELEASE_ACCOUNT: ${{ vars.AWS_ACCOUNT_ID }}
+          RELEASE_REPOSITORY: ${{ inputs.service-name }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$RELEASE_ACCOUNT" != '113831183566' ]]; then
+            echo "image-uri=${ECR_REGISTRY}/${RELEASE_REPOSITORY}:${RELEASE_SHA}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          digest=$(aws ecr describe-images --repository-name "$RELEASE_REPOSITORY" \
+            --image-ids "imageTag=$RELEASE_SHA" --query 'imageDetails[0].imageDigest' --output text)
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          if [[ -s release-digest.txt ]]; then
+            [[ "$digest" == "$(cat release-digest.txt)" ]]
+          fi
+          echo "image-uri=${ECR_REGISTRY}/${RELEASE_REPOSITORY}@${digest}" >> "$GITHUB_OUTPUT"
 
       # -----------------------------------------------------------------------
       # cosign KMS sign — uses velnor-cosign-signing-v1 key (T-W0-009)
@@ -604,10 +663,17 @@ jobs:
         uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da  # v3.7.0
 
       - name: Sign image with cosign (KMS)
+        if: steps.existing-image.outputs.exists == 'false'
         run: |
           cosign sign --yes \
             --key "${{ env.COSIGN_KMS_KEY }}" \
-            "${{ steps.image-meta.outputs.image-uri }}"
+            "${{ steps.image-ref.outputs.image-uri }}"
+
+      - name: Verify exact release signature (including resumed images)
+        if: vars.AWS_ACCOUNT_ID == '113831183566'
+        run: |
+          cosign verify --key "${{ env.COSIGN_KMS_KEY }}" \
+            "${{ steps.image-ref.outputs.image-uri }}" > verified-release-signature.json
 
       # -----------------------------------------------------------------------
       # Attach SBOM as a cosign attestation (optional — skipped if Syft unavailable)
@@ -615,7 +681,7 @@ jobs:
       - name: Generate SBOM for signed image (Syft)
         uses: anchore/sbom-action@e11c554f704a0b820cbf8c51673f6945e0731532  # v0.17.0
         with:
-          image: '${{ steps.image-meta.outputs.image-uri }}'
+          image: '${{ steps.image-ref.outputs.image-uri }}'
           format: cyclonedx-json
           artifact-name: 'sbom-${{ inputs.service-name }}-${{ github.sha }}.cdx.json'
           output-file: sbom.cdx.json
@@ -626,4 +692,4 @@ jobs:
             --key "${{ env.COSIGN_KMS_KEY }}" \
             --predicate sbom.cdx.json \
             --type cyclonedx \
-            "${{ steps.image-meta.outputs.image-uri }}"
+            "${{ steps.image-ref.outputs.image-uri }}"
