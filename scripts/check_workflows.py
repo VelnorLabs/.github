@@ -59,6 +59,7 @@ CI_WORKFLOW = "ci.yml"
 # are context for a reader, not something this script verifies — it cannot see
 # other repos.
 CALLED_BY_OTHER_REPOS = {
+    "_repository-release.yml": "19 versioned platform repositories",
     "_ci-template.yml": "every service repo's ci.yml (~94 caller files)",
     "_deploy-template.yml": "every service repo's deploy.yml (~68)",
     "_sdk-bypass-check.yml": "every Go/Python service (~69)",
@@ -102,9 +103,6 @@ KNOWN_LOCAL_ONLY_VIOLATIONS = {
         "Would startup_failure on first use, i.e. during a release. Note it "
         "needs aws-actions/configure-aws-credentials, so the OIDC path out of "
         "this repo is dead too, not just the checkout."
-    ),
-    "promote-to-production.yml": (
-        "LE-397 — same as promote-to-staging, and the worse place to find out."
     ),
 }
 

@@ -1,0 +1,63 @@
+name: Reviewed repository release
+on:
+  workflow_call:
+    inputs:
+      controller_sha:
+        type: string
+        required: true
+      release_pr:
+        type: number
+        default: 0
+      publish:
+        type: boolean
+        default: false
+    secrets:
+      RELEASE_GOVERNANCE_READ_TOKEN:
+        required: false
+# Permissions are supplied by the caller: PR validation is read-only;
+# manual publication explicitly grants contents:write. Do not request elevated
+# permissions in a skipped nested job: GitHub checks them before scheduling.
+jobs:
+  validate:
+    permissions:
+      contents: read
+    if: '!inputs.publish'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Read proposed lock and pinned validator
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CONTROLLER_SHA: ${{ inputs.controller_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$CONTROLLER_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git init -q .
+          AUTH=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c http.extraheader="AUTHORIZATION: basic ${AUTH}" fetch -q --depth=1 "https://github.com/${GITHUB_REPOSITORY}.git" "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD -- .release
+          git init -q controller
+          git -C controller fetch -q --depth=1 https://github.com/VelnorLabs/.github.git "$CONTROLLER_SHA"
+          git -C controller checkout -q FETCH_HEAD
+          python3 controller/scripts/releases/repository_release.py validate --repository "$GITHUB_REPOSITORY"
+  publish:
+    if: inputs.publish && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && vars.REPOSITORY_RELEASES_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: repository-release
+      cancel-in-progress: false
+    steps:
+      - name: Publish only a reviewed and Development-validated immutable version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CONTROLLER_SHA: ${{ inputs.controller_sha }}
+          RELEASE_PR: ${{ inputs.release_pr }}
+          RELEASE_GOVERNANCE_READ_TOKEN: ${{ secrets.RELEASE_GOVERNANCE_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          [[ "$CONTROLLER_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git init -q controller
+          git -C controller fetch -q --depth=1 https://github.com/VelnorLabs/.github.git "$CONTROLLER_SHA"
+          git -C controller checkout -q FETCH_HEAD
+          python3 controller/scripts/releases/repository_release.py publish --repository "$GITHUB_REPOSITORY" --pr "$RELEASE_PR"

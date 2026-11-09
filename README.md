@@ -238,3 +238,9 @@ Rules enforced on every `VelnorLabs/*` repo's default branch:
 - DEC-0056 — org is VelnorLabs
 - DEC-0057 — single dev account (velnor-dev, us-east-1)
 - velnor-iac/accounts/dev/github_oidc.tf — OIDC TF
+
+## Production promotion
+
+See [production/README.md](production/README.md) for the manifest-driven production
+controller, infrastructure planning/apply, stage adapters, and activation checklist.
+The candidate stays unpinned while development continues; preview needs no cloud access.

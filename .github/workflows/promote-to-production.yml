@@ -1,319 +1,80 @@
-# ---------------------------------------------------------------------------
-# VelnorLabs · Stage 6 — Promote to Production · T-W0-012
-#
-# Manual gate: triggered via workflow_dispatch.
-# Requires manual approval via GitHub Environment "production" before running.
-#
-# Stage 6 flow:
-#   OIDC → gate check (staging green) → AppConfig rollout
-#        → [Atlas pre-cut: NOT WIRED, fails closed — LE-372] →
-#   monitor rollout → CloudWatch deployment event
-#
-# Per Q-7: AppConfig tenant rollout at V1; blue/green canary deferred to V1.5+
-#
-# Environment: production
-#   Requires environment approval configured in GitHub repository settings
-#   under Settings → Environments → production → Required reviewers.
-#
-# Invariants:
-#   - Pinned action SHAs (Invariant §4)
-#   - OIDC auth — no static AWS keys (T-W0-010 requirement)
-#   - No hardcoded secrets — all via ${{ secrets.X }} or OIDC
-#   - tenant_id is optional: omit for fleet-wide rollout; set for targeted rollout
-#   - canary_pct controls AppConfig rollout strategy selection
-# ---------------------------------------------------------------------------
-
-name: Stage 6 · Promote to Production
+# Controller only: production project bindings and release pins are intentionally unset.
+# No push trigger, no third-party actions, no development resource fallbacks.
+name: Promote development release to production
 
 on:
   workflow_dispatch:
     inputs:
-      service:
-        description: 'Service name (e.g. chat-api, agent-gateway)'
+      operation:
+        description: 'Preview is offline; execution requires configured production protection and pins'
+        required: true
+        type: choice
+        options: [preview, release]
+        default: preview
+      release:
+        description: 'Reviewed release JSON under production/releases/'
         required: true
         type: string
-      image_tag:
-        description: 'Full ECR URI with tag of the image to promote to production'
-        required: true
-        type: string
-      tenant_id:
-        description: 'Optional tenant slug for targeted rollout (leave blank for fleet-wide)'
-        required: false
-        type: string
-        default: ''
-      canary_pct:
-        description: 'Initial canary rollout percentage (used to select AppConfig strategy)'
-        required: false
-        type: number
-        default: 10
+        default: production/releases/candidate.json
 
-env:
-  AWS_REGION: 'us-east-1'
-  GHA_ROLE_ARN: 'arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/velnor-github-actions'
-  ECS_CLUSTER: 'velnor-prod-cluster'
-  IAC_REPO_PATH: 'velnor-iac'
-  # AppConfig identifiers (per DEC-0047 and network rev. 5)
-  APPCONFIG_APP_ID: 'velnor'
-  APPCONFIG_ENV_ID: 'prod'
-  APPCONFIG_PROFILE_ID: 'tenant-rollout'
-  # Per Q-7: AppConfig tenant rollout at V1; blue/green canary deferred to V1.5+
-  APPCONFIG_STRATEGY_ID: 'Linear10PercentEvery1Minute'
+permissions:
+  contents: read
+
+# Shared by BOTH production workflows: infrastructure and releases cannot overlap.
+concurrency:
+  group: velnor-production
+  cancel-in-progress: false
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Stage 6: Promote to Production
-  # Requires environment approval (production) before any step runs.
-  # ---------------------------------------------------------------------------
-  promote-to-production:
-    name: Stage 6 · promote ${{ inputs.service }} → production (${{ inputs.canary_pct }}% canary)
+  preview:
     runs-on: ubuntu-latest
-    environment: production   # Requires manual approval in GitHub settings
-    permissions:
-      id-token: write         # OIDC token for AWS
-      contents: read
-      deployments: write      # For posting GitHub deployment status
-      statuses: write         # For reading/writing commit status checks
-    outputs:
-      production_deploy_status: ${{ steps.set-prod-status.outputs.production_deploy_status }}
-
+    timeout-minutes: 10
     steps:
-      - name: Checkout calling repo
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-
-      # Checkout velnor-iac. NOTE (LE-372): this existed ONLY to fetch
-      # scripts/atlas_migrate.sh, which is now deleted, so nothing in this
-      # workflow reads it today. Kept because wiring the real per-tenant rollout
-      # will need this repo again; delete it if that never happens.
-      - name: Checkout velnor-iac
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-        with:
-          repository: VelnorLabs/velnor-iac
-          path: ${{ env.IAC_REPO_PATH }}
-          token: ${{ github.token }}
-
-      # -----------------------------------------------------------------------
-      # Step 1: OIDC — assume velnor-github-actions role
-      # -----------------------------------------------------------------------
-      - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502  # v4.0.2
-        with:
-          role-to-assume: ${{ env.GHA_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-session-name: gha-prod-${{ inputs.service }}-${{ github.run_id }}
-
-      - name: Verify AWS identity (OIDC smoke test)
-        run: aws sts get-caller-identity
-
-      # -----------------------------------------------------------------------
-      # Step 2: Gate check — verify staging deployment was green
-      # Calls GitHub API to check the most recent staging deployment status.
-      # Fails fast if staging is not in a succeeded state.
-      # -----------------------------------------------------------------------
-      - name: Gate check — verify staging deployment is green
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
-        with:
-          script: |
-            const { data: deployments } = await github.rest.repos.listDeployments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              environment: 'staging',
-              per_page: 5,
-            });
-
-            if (deployments.length === 0) {
-              core.setFailed('Gate check FAILED: No staging deployments found. ' +
-                'Run Stage 5 (promote-to-staging) before promoting to production.');
-              return;
-            }
-
-            const latestDeployment = deployments[0];
-            console.log(`Latest staging deployment ID: ${latestDeployment.id}`);
-            console.log(`Ref: ${latestDeployment.ref}`);
-
-            const { data: statuses } = await github.rest.repos.listDeploymentStatuses({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              deployment_id: latestDeployment.id,
-              per_page: 1,
-            });
-
-            if (statuses.length === 0) {
-              core.setFailed('Gate check FAILED: Staging deployment has no status. ' +
-                'Staging may still be in progress.');
-              return;
-            }
-
-            const latestStatus = statuses[0].state;
-            console.log(`Latest staging deployment status: ${latestStatus}`);
-
-            if (latestStatus !== 'success') {
-              core.setFailed(`Gate check FAILED: Staging deployment status is '${latestStatus}'. ` +
-                'Only promote to production from a green staging deployment.');
-            } else {
-              console.log('Gate check PASSED — staging deployment is green.');
-            }
-
-      # -----------------------------------------------------------------------
-      # Step 3: AWS AppConfig deployment — linear 10%/min rollout strategy
-      # Per Q-7: AppConfig tenant rollout at V1; blue/green canary deferred to V1.5+
-      # tenant_id input is attached as a freeform attribute for targeted rollouts.
-      # -----------------------------------------------------------------------
-      - name: Start AppConfig deployment (tenant rollout)
-        id: appconfig-deploy
+      - name: Checkout exact controller revision (local_only compatible)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # Per Q-7: AppConfig tenant rollout at V1; blue/green canary deferred to V1.5+
-          DESCRIPTION="Stage 6: ${{ inputs.service }}@$(echo '${{ inputs.image_tag }}' | rev | cut -d: -f1 | rev)"
-          if [ -n "${{ inputs.tenant_id }}" ]; then
-            DESCRIPTION="$DESCRIPTION (tenant: ${{ inputs.tenant_id }})"
-          fi
+          git init -q .
+          git remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          AUTH=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c http.extraheader="AUTHORIZATION: basic ${AUTH}" fetch -q --depth=1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+      - name: Validate and summarize release without cloud credentials
+        env:
+          RELEASE_FILE: ${{ inputs.release }}
+        run: python3 scripts/production/pipeline.py preview --release "$RELEASE_FILE"
 
-          echo "Starting AppConfig deployment: $DESCRIPTION"
-          DEPLOYMENT_NUM=$(aws appconfig start-deployment \
-            --application-id "${{ env.APPCONFIG_APP_ID }}" \
-            --environment-id "${{ env.APPCONFIG_ENV_ID }}" \
-            --configuration-profile-id "${{ env.APPCONFIG_PROFILE_ID }}" \
-            --deployment-strategy-id "${{ env.APPCONFIG_STRATEGY_ID }}" \
-            --configuration-version "$(date +%Y%m%d%H%M%S)" \
-            --description "$DESCRIPTION" \
-            --query 'DeploymentNumber' \
-            --output text)
-
-          echo "AppConfig deployment number: $DEPLOYMENT_NUM"
-          echo "appconfig_deployment_num=$DEPLOYMENT_NUM" >> "$GITHUB_OUTPUT"
-
-      # -----------------------------------------------------------------------
-      # Step 4: Atlas pre-cut — NOT WIRED, FAILS CLOSED (LE-372)
-      # -----------------------------------------------------------------------
-      # These two steps called velnor-iac/scripts/atlas_migrate.sh, which is
-      # DELETED. It had been marked "DEPRECATED — Do not use" since LE-099 and
-      # could never have worked: MIGRATIONS_DIR defaults to a directory absent
-      # from velnor-iac, it is not vertical-aware (DEC-0064), and it uses a
-      # static-password DSN the DEC-0061 RDS Proxy rejects.
-      #
-      # THE SAFETY PROPERTY THIS OWED IS PRESERVED RATHER THAN DROPPED. The
-      # --check-destructive gate was the only thing standing between a prod cut
-      # and an unreviewed DROP/TRUNCATE/ALTER TYPE. Deleting it silently would
-      # remove a guarantee; leaving a call to a missing file would read as an
-      # oversight. So this fails closed, loudly, and says what must replace it.
-      # Production does not exist yet, so nothing is blocked today.
-      #
-      # TO WIRE IT, BOTH HALVES ARE OWED — do not restore only the apply:
-      #   1. a destructive-change gate over the pending migration set, and
-      #   2. the apply-registry Fargate rollout (velnor-iac
-      #      accounts/dev/codebuild/atlas_tenant_rollout.tf, prod equivalent),
-      # with promotion gated on both.
-      - name: Atlas pre-cut — destructive change check + apply (prod)
-        run: |
-          echo "::error::Production migrations are not wired. atlas_migrate.sh was deleted (LE-372)." \
-               "A prod cut owes BOTH a destructive-change gate AND the apply-registry rollout." \
-               "Failing closed rather than cutting prod against an unmigrated, unchecked database."
-          exit 1
-
-      # -----------------------------------------------------------------------
-      # Step 5: Monitor AppConfig rollout until COMPLETE or ROLLED_BACK
-      # Polls every 30s; times out after 30 minutes (linear 10%/min = ~10 min max)
-      # -----------------------------------------------------------------------
-      - name: Monitor AppConfig rollout
+  execute:
+    needs: preview
+    if: inputs.operation != 'preview'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PRODUCTION_PIPELINES_ENABLED: ${{ vars.PRODUCTION_PIPELINES_ENABLED }}
+      PRODUCTION_ACCOUNT_ID: ${{ vars.PRODUCTION_ACCOUNT_ID }}
+      PRODUCTION_ROLE_ARN: ${{ vars.PRODUCTION_ROLE_ARN }}
+      AWS_REGION: ${{ vars.PRODUCTION_AWS_REGION }}
+      AWS_DEFAULT_REGION: ${{ vars.PRODUCTION_AWS_REGION }}
+      AWS_EC2_METADATA_DISABLED: 'true'
+      PRODUCTION_SOURCE_READ_TOKEN: ${{ secrets.PRODUCTION_SOURCE_READ_TOKEN }}
+    steps:
+      - name: Checkout exact controller revision (local_only compatible)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          DEPLOYMENT_NUM="${{ steps.appconfig-deploy.outputs.appconfig_deployment_num }}"
-          echo "Monitoring AppConfig deployment #$DEPLOYMENT_NUM..."
-          TIMEOUT=1800  # 30 minutes
-          ELAPSED=0
-          POLL_INTERVAL=30
-          while [ $ELAPSED -lt $TIMEOUT ]; do
-            STATUS=$(aws appconfig get-deployment \
-              --application-id "${{ env.APPCONFIG_APP_ID }}" \
-              --environment-id "${{ env.APPCONFIG_ENV_ID }}" \
-              --deployment-number "$DEPLOYMENT_NUM" \
-              --query 'State' \
-              --output text)
-            PCT=$(aws appconfig get-deployment \
-              --application-id "${{ env.APPCONFIG_APP_ID }}" \
-              --environment-id "${{ env.APPCONFIG_ENV_ID }}" \
-              --deployment-number "$DEPLOYMENT_NUM" \
-              --query 'PercentageComplete' \
-              --output text 2>/dev/null || echo "N/A")
-            echo "  [${ELAPSED}s] AppConfig state: $STATUS (${PCT}% complete)"
-            case "$STATUS" in
-              COMPLETE)
-                echo "AppConfig rollout COMPLETE."
-                exit 0
-                ;;
-              ROLLED_BACK|ROLLING_BACK)
-                echo "AppConfig rollout $STATUS — production promotion FAILED."
-                exit 1
-                ;;
-              DEPLOYING|BAKING)
-                sleep $POLL_INTERVAL
-                ELAPSED=$((ELAPSED + POLL_INTERVAL))
-                ;;
-              *)
-                echo "Unknown AppConfig state: $STATUS — waiting..."
-                sleep $POLL_INTERVAL
-                ELAPSED=$((ELAPSED + POLL_INTERVAL))
-                ;;
-            esac
-          done
-          echo "AppConfig rollout monitoring timed out after ${TIMEOUT}s"
-          exit 1
-
-      # -----------------------------------------------------------------------
-      # Step 6: Post deployment event to CloudWatch (custom metric + log event)
-      # -----------------------------------------------------------------------
-      - name: Post deployment event to CloudWatch
-        if: always()
-        run: |
-          set -euo pipefail
-          DEPLOY_RESULT="success"
-          if [ "${{ job.status }}" != "success" ]; then
-            DEPLOY_RESULT="failure"
-          fi
-
-          TIMESTAMP=$(date -u +%s)000  # milliseconds
-
-          # Emit a custom CloudWatch metric data point
-          aws cloudwatch put-metric-data \
-            --namespace "Velnor/Deployments" \
-            --metric-data "[
-              {
-                \"MetricName\": \"DeploymentEvent\",
-                \"Dimensions\": [
-                  {\"Name\": \"Service\", \"Value\": \"${{ inputs.service }}\"},
-                  {\"Name\": \"Environment\", \"Value\": \"production\"},
-                  {\"Name\": \"Result\", \"Value\": \"$DEPLOY_RESULT\"}
-                ],
-                \"Value\": 1,
-                \"Unit\": \"Count\",
-                \"Timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
-              }
-            ]"
-
-          # Emit a structured log event to CloudWatch Logs
-          LOG_GROUP="/velnor/deployments/production"
-          LOG_STREAM="${{ inputs.service }}"
-          aws logs create-log-group --log-group-name "$LOG_GROUP" 2>/dev/null || true
-          aws logs create-log-stream \
-            --log-group-name "$LOG_GROUP" \
-            --log-stream-name "$LOG_STREAM" 2>/dev/null || true
-          aws logs put-log-events \
-            --log-group-name "$LOG_GROUP" \
-            --log-stream-name "$LOG_STREAM" \
-            --log-events "[
-              {
-                \"timestamp\": $TIMESTAMP,
-                \"message\": \"{\\\"event\\\":\\\"deployment\\\",\\\"service\\\":\\\"${{ inputs.service }}\\\",\\\"image_tag\\\":\\\"${{ inputs.image_tag }}\\\",\\\"tenant_id\\\":\\\"${{ inputs.tenant_id }}\\\",\\\"canary_pct\\\":${{ inputs.canary_pct }},\\\"result\\\":\\\"$DEPLOY_RESULT\\\",\\\"run_id\\\":\\\"${{ github.run_id }}\\\",\\\"actor\\\":\\\"${{ github.actor }}\\\"}\"
-              }
-            ]"
-          echo "CloudWatch deployment event posted: service=${{ inputs.service }} result=$DEPLOY_RESULT"
-
-      - name: Set production deploy status output
-        id: set-prod-status
-        if: always()
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "production_deploy_status=success" >> "$GITHUB_OUTPUT"
-          else
-            echo "production_deploy_status=failure" >> "$GITHUB_OUTPUT"
-          fi
+          git init -q .
+          git remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          AUTH=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c http.extraheader="AUTHORIZATION: basic ${AUTH}" fetch -q --depth=1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+      - name: Execute pinned production stages and verify receipts
+        env:
+          RELEASE_FILE: ${{ inputs.release }}
+          OPERATION: ${{ inputs.operation }}
+        run: python3 scripts/production/pipeline.py "$OPERATION" --release "$RELEASE_FILE"
