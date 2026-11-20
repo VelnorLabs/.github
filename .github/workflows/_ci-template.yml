@@ -619,6 +619,12 @@ jobs:
             exit 1
           fi
 
+      # Fail before publishing an immutable tag if the signing tool is unavailable.
+      # Existing unsigned images remain rejected; source labels alone are not
+      # permission to sign an artifact created by an earlier attempt.
+      - name: Install cosign
+        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da  # v3.7.0
+
       - name: Build Docker image
         if: steps.existing-image.outputs.exists == 'false'
         env:
@@ -659,9 +665,6 @@ jobs:
       # cosign KMS sign — uses velnor-cosign-signing-v1 key (T-W0-009)
       # KMS key rotation handled at the alias level; no workflow change needed.
       # -----------------------------------------------------------------------
-      - name: Install cosign
-        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da  # v3.7.0
-
       - name: Sign image with cosign (KMS)
         if: steps.existing-image.outputs.exists == 'false'
         run: |
