@@ -89,3 +89,17 @@ def test_resume_still_requires_signature_and_sbom():
 
 def test_other_accounts_keep_original_build_path(tmp_path):
     assert run_lookup(tmp_path, account="999999999999", mode="denied") == (0, "exists=false\n")
+
+
+def test_signing_tool_failure_cannot_leave_a_new_unsigned_tag():
+    ss = steps()
+    names = [s['name'] for s in ss]
+    install = next(s for s in ss if s['name'] == 'Install cosign')
+    assert 'if' not in install and 'continue-on-error' not in install
+    assert install['uses'] == 'sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da'
+    assert names.index('Install cosign') < names.index('Build Docker image')
+    assert names.index('Install cosign') < names.index('Push image to ECR')
+    for name in ['Build Docker image', 'Push image to ECR']:
+        step = next(s for s in ss if s['name'] == name)
+        assert 'always(' not in step.get('if', '')
+        assert 'continue-on-error' not in step
