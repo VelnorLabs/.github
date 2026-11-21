@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "environment": "production",
+  "account_id": null,
+  "region": null,
+  "receipt_bucket": null,
+  "projects": {
+    "infra-plan": {
+      "stage": "infra-plan",
+      "component": "iac",
+      "name": null,
+      "buildspec": "buildspec-production-infra-plan.yml"
+    },
+    "infra-apply": {
+      "stage": "infra-apply",
+      "component": "iac",
+      "name": null,
+      "buildspec": "buildspec-production-infra-apply.yml"
+    },
+    "migration-check": {
+      "stage": "migration-check",
+      "component": "plane-api",
+      "name": null,
+      "buildspec": "buildspec-production-migration-check.yml"
+    },
+    "migrate": {
+      "stage": "migrate",
+      "component": "plane-api",
+      "name": null,
+      "buildspec": "buildspec-production-migrate.yml"
+    },
+    "plane-api": {
+      "stage": "backend",
+      "component": "plane-api",
+      "name": null,
+      "buildspec": "buildspec-production-backend.yml"
+    },
+    "admin-api": {
+      "stage": "backend",
+      "component": "admin-api",
+      "name": null,
+      "buildspec": "buildspec-production-backend.yml"
+    },
+    "operator-api": {
+      "stage": "backend",
+      "component": "operator-api",
+      "name": null,
+      "buildspec": "buildspec-production-backend.yml"
+    },
+    "user-api": {
+      "stage": "backend",
+      "component": "user-api",
+      "name": null,
+      "buildspec": "buildspec-production-backend.yml"
+    },
+    "action-gate": {
+      "stage": "backend",
+      "component": "action-gate",
+      "name": null,
+      "buildspec": "buildspec-production-backend.yml"
+    },
+    "workers": {
+      "stage": "backend",
+      "component": "workers",
+      "name": null,
+      "buildspec": "buildspec-production-backend.yml"
+    },
+    "store-compliance-worker": {
+      "stage": "backend",
+      "component": "store-compliance-worker",
+      "name": null,
+      "buildspec": "buildspec-production-backend.yml"
+    },
+    "embed-worker": {
+      "stage": "backend",
+      "component": "embed-worker",
+      "name": null,
+      "buildspec": "buildspec-production-backend.yml"
+    },
+    "agent-gateway": {
+      "stage": "backend",
+      "component": "agent-gateway",
+      "name": null,
+      "buildspec": "buildspec-production-backend.yml"
+    },
+    "chat-api": {
+      "stage": "backend",
+      "component": "chat-api",
+      "name": null,
+      "buildspec": "buildspec-production-backend.yml"
+    },
+    "web": {
+      "stage": "web",
+      "component": "web",
+      "name": null,
+      "buildspec": "buildspec-production-web.yml"
+    },
+    "admin-web": {
+      "stage": "web",
+      "component": "admin-web",
+      "name": null,
+      "buildspec": "buildspec-production-web.yml"
+    },
+    "onboarding-verify": {
+      "stage": "verify",
+      "component": "evals",
+      "name": null,
+      "buildspec": "buildspec-production-verify.yml"
+    }
+  },
+  "runner_image": null,
+  "receipt_kms_key_arn": null
+}

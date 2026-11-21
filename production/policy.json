@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "production_not_before": "2026-11-10T00:00:00-06:00",
+  "timezone": "America/Chicago",
+  "reason": "First production deployment is Tuesday November 10 at the earliest, subject to readiness. No automatic deployment is scheduled.",
+  "production_approver": "Velnor-ai",
+  "environments": [
+    "development",
+    "production"
+  ]
+}

@@ -1,0 +1,230 @@
+{
+  "schema_version": 1,
+  "release_id": "first-onboarding",
+  "state": "draft",
+  "components": {
+    "iac": {
+      "repository": "VelnorLabs/velnor-iac",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "schemas": {
+      "repository": "VelnorLabs/velnor-schemas",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "platform-sdk-go": {
+      "repository": "VelnorLabs/velnor-platform-sdk-go",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "platform-sdk-py": {
+      "repository": "VelnorLabs/velnor-platform-sdk-py",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "design-tokens": {
+      "repository": "VelnorLabs/velnor-design-tokens",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "plane-api": {
+      "repository": "VelnorLabs/velnor-plane-api",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "admin-api": {
+      "repository": "VelnorLabs/velnor-admin-api",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "operator-api": {
+      "repository": "VelnorLabs/velnor-operator-api",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "user-api": {
+      "repository": "VelnorLabs/velnor-user-api",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "action-gate": {
+      "repository": "VelnorLabs/velnor-action-gate",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "workers": {
+      "repository": "VelnorLabs/velnor-workers",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "store-compliance-worker": {
+      "repository": "VelnorLabs/velnor-store-compliance-worker",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "embed-worker": {
+      "repository": "VelnorLabs/velnor-embed-worker",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "agent-gateway": {
+      "repository": "VelnorLabs/velnor-agent-gateway",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "chat-api": {
+      "repository": "VelnorLabs/velnor-chat-api",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "web": {
+      "repository": "VelnorLabs/velnor-web",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "admin-web": {
+      "repository": "VelnorLabs/velnor-admin-web",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "evals": {
+      "repository": "VelnorLabs/velnor-evals",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    },
+    "mobile": {
+      "repository": "VelnorLabs/velnor-mobile",
+      "source_sha": null,
+      "ci_run_id": null,
+      "ci_workflow": null,
+      "artifacts": null,
+      "version": null,
+      "release_lock_sha256": null
+    }
+  },
+  "stages": {
+    "infra-plan": [
+      "infra-plan"
+    ],
+    "infra-apply": [
+      "infra-apply"
+    ],
+    "migration-check": [
+      "migration-check"
+    ],
+    "migrate": [
+      "migrate"
+    ],
+    "backend": [
+      "plane-api",
+      "admin-api",
+      "operator-api",
+      "user-api",
+      "action-gate",
+      "workers",
+      "store-compliance-worker",
+      "embed-worker",
+      "agent-gateway",
+      "chat-api"
+    ],
+    "web": [
+      "web",
+      "admin-web"
+    ],
+    "verify": [
+      "onboarding-verify"
+    ]
+  },
+  "operations": {
+    "infra-plan": null,
+    "infra-apply": null,
+    "migration-check": null,
+    "migrate": null,
+    "plane-api": null,
+    "admin-api": null,
+    "operator-api": null,
+    "user-api": null,
+    "action-gate": null,
+    "workers": null,
+    "store-compliance-worker": null,
+    "embed-worker": null,
+    "agent-gateway": null,
+    "chat-api": null,
+    "web": null,
+    "admin-web": null,
+    "onboarding-verify": null
+  }
+}

@@ -1,0 +1,85 @@
+# Controller only: production project bindings and release pins are intentionally unset.
+# No push trigger, no third-party actions, no development resource fallbacks.
+name: Production infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Preview is offline; execution requires configured production protection and pins'
+        required: true
+        type: choice
+        options: [preview, infra-plan, infra-apply]
+        default: preview
+      release:
+        description: 'Reviewed release JSON under production/releases/'
+        required: true
+        type: string
+        default: production/releases/candidate.json
+      plan_sha256:
+        description: 'infra-apply only: SHA256 of the saved, reviewed plan bundle'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+# Shared by BOTH production workflows: infrastructure and releases cannot overlap.
+concurrency:
+  group: velnor-production
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact controller revision (local_only compatible)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git init -q .
+          git remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          AUTH=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c http.extraheader="AUTHORIZATION: basic ${AUTH}" fetch -q --depth=1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+      - name: Validate and summarize release without cloud credentials
+        env:
+          RELEASE_FILE: ${{ inputs.release }}
+        run: python3 scripts/production/pipeline.py preview --release "$RELEASE_FILE"
+
+  execute:
+    needs: preview
+    if: inputs.operation != 'preview'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PRODUCTION_PIPELINES_ENABLED: ${{ vars.PRODUCTION_PIPELINES_ENABLED }}
+      PRODUCTION_ACCOUNT_ID: ${{ vars.PRODUCTION_ACCOUNT_ID }}
+      PRODUCTION_ROLE_ARN: ${{ vars.PRODUCTION_ROLE_ARN }}
+      AWS_REGION: ${{ vars.PRODUCTION_AWS_REGION }}
+      AWS_DEFAULT_REGION: ${{ vars.PRODUCTION_AWS_REGION }}
+      AWS_EC2_METADATA_DISABLED: 'true'
+      PRODUCTION_SOURCE_READ_TOKEN: ${{ secrets.PRODUCTION_SOURCE_READ_TOKEN }}
+    steps:
+      - name: Checkout exact controller revision (local_only compatible)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git init -q .
+          git remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          AUTH=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c http.extraheader="AUTHORIZATION: basic ${AUTH}" fetch -q --depth=1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+      - name: Execute pinned production stages and verify receipts
+        env:
+          RELEASE_FILE: ${{ inputs.release }}
+          OPERATION: ${{ inputs.operation }}
+          PLAN_SHA256: ${{ inputs.plan_sha256 }}
+        run: python3 scripts/production/pipeline.py "$OPERATION" --release "$RELEASE_FILE" --plan-sha256 "$PLAN_SHA256"
