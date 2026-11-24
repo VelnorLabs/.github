@@ -1,0 +1,12 @@
+version: 0.2
+phases:
+  build:
+    on-failure: ABORT
+    commands:
+      - python3 "$CODEBUILD_SRC_DIR_controller/scripts/production/adapter.py"
+artifacts:
+  files:
+    - production-receipt.json
+    - production-evidence.json
+    - rollback.json
+  discard-paths: yes

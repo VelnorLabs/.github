@@ -30,3 +30,9 @@ codeowners-templates/CODEOWNERS.schemas         @VelnorLabs/pm @VelnorLabs/engin
 # Schema bypass-check and SLA-watch workflows — infra-leads + PM gate
 .github/workflows/_schema-bypass-check.yml      @VelnorLabs/engineering @VelnorLabs/infra-leads @VelnorLabs/pm
 .github/workflows/_schema-sla-watch.yml         @VelnorLabs/engineering @VelnorLabs/infra-leads @VelnorLabs/pm
+
+# Production release manifests and execution adapters
+/production/                                    @VelnorLabs/engineering @VelnorLabs/infra-leads
+/scripts/production/                            @VelnorLabs/engineering @VelnorLabs/infra-leads
+
+/scripts/releases/                              @VelnorLabs/engineering @VelnorLabs/infra-leads
