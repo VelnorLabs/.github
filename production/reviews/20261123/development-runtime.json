@@ -1,0 +1,734 @@
+{
+  "account": "113831183566",
+  "region": "us-east-1",
+  "cluster": "velnor-dev-cluster",
+  "services": [
+    {
+      "service": "velnor-chat-api",
+      "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-chat-api:367",
+      "desired": 1,
+      "running": 1,
+      "deployments": [
+        {
+          "status": "PRIMARY",
+          "taskDefinition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-chat-api:367",
+          "rolloutState": "COMPLETED"
+        }
+      ],
+      "declared_images": [
+        {
+          "name": "velnor-chat-api",
+          "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-chat-api@sha256:87cd257d1fd2f5d30390beef00a5512275aa7ef6ef440323cf1b949fe27f3b9c"
+        },
+        {
+          "name": "adot-collector",
+          "image": "amazon/aws-otel-collector@sha256:955e240b27d7fd3c7995fd937db4b963975948eb553f656d8c37a564e5b5e07d"
+        }
+      ],
+      "running_images": [
+        {
+          "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-chat-api:367",
+          "containers": [
+            {
+              "name": "adot-collector",
+              "image": "amazon/aws-otel-collector@sha256:955e240b27d7fd3c7995fd937db4b963975948eb553f656d8c37a564e5b5e07d",
+              "imageDigest": "sha256:955e240b27d7fd3c7995fd937db4b963975948eb553f656d8c37a564e5b5e07d",
+              "lastStatus": "RUNNING"
+            },
+            {
+              "name": "ecs-service-connect-9Nn9t",
+              "image": null,
+              "imageDigest": null,
+              "lastStatus": "RUNNING"
+            },
+            {
+              "name": "velnor-chat-api",
+              "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-chat-api@sha256:87cd257d1fd2f5d30390beef00a5512275aa7ef6ef440323cf1b949fe27f3b9c",
+              "imageDigest": "sha256:87cd257d1fd2f5d30390beef00a5512275aa7ef6ef440323cf1b949fe27f3b9c",
+              "lastStatus": "RUNNING"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "service": "velnor-dev-adot",
+      "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-dev-adot:2",
+      "desired": 2,
+      "running": 2,
+      "deployments": [
+        {
+          "status": "PRIMARY",
+          "taskDefinition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-dev-adot:2",
+          "rolloutState": "COMPLETED"
+        }
+      ],
+      "declared_images": [
+        {
+          "name": "adot-collector",
+          "image": "public.ecr.aws/aws-observability/aws-otel-collector:latest"
+        }
+      ],
+      "running_images": [
+        {
+          "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-dev-adot:2",
+          "containers": [
+            {
+              "name": "adot-collector",
+              "image": "public.ecr.aws/aws-observability/aws-otel-collector:latest",
+              "imageDigest": "sha256:a465f606684ab1ac3c5221c8bffe783b0120c8bd5318e1bf63c90f2cf56af835",
+              "lastStatus": "RUNNING"
+            }
+          ]
+        },
+        {
+          "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-dev-adot:2",
+          "containers": [
+            {
+              "name": "adot-collector",
+              "image": "public.ecr.aws/aws-observability/aws-otel-collector:latest",
+              "imageDigest": "sha256:a465f606684ab1ac3c5221c8bffe783b0120c8bd5318e1bf63c90f2cf56af835",
+              "lastStatus": "RUNNING"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "service": "velnor-mlflow",
+      "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-mlflow:2",
+      "desired": 1,
+      "running": 1,
+      "deployments": [
+        {
+          "status": "PRIMARY",
+          "taskDefinition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-mlflow:2",
+          "rolloutState": "COMPLETED"
+        }
+      ],
+      "declared_images": [
+        {
+          "name": "velnor-mlflow",
+          "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-mlflow:d60218edb15c61c131a8416b43c0c877dff66ce1"
+        }
+      ],
+      "running_images": [
+        {
+          "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-mlflow:2",
+          "containers": [
+            {
+              "name": "velnor-mlflow",
+              "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-mlflow:d60218edb15c61c131a8416b43c0c877dff66ce1",
+              "imageDigest": "sha256:b7d9408ecb5167f8f5f5b1e21ff8eba6078c49c4b5adf6302463335958f9d59c",
+              "lastStatus": "RUNNING"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "service": "velnor-plane-api",
+      "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-plane-api:189",
+      "desired": 1,
+      "running": 1,
+      "deployments": [
+        {
+          "status": "PRIMARY",
+          "taskDefinition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-plane-api:189",
+          "rolloutState": "COMPLETED"
+        }
+      ],
+      "declared_images": [
+        {
+          "name": "velnor-plane-api",
+          "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-plane-api@sha256:50dea86d69904d317ebca4a921c387426506653f276f63cd04b50a197fe41071"
+        },
+        {
+          "name": "adot-collector",
+          "image": "amazon/aws-otel-collector@sha256:7968fb60db6a2390a47ba6a2df029745638486e285c9b2487da1b722d0855a3e"
+        }
+      ],
+      "running_images": [
+        {
+          "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-plane-api:189",
+          "containers": [
+            {
+              "name": "velnor-plane-api",
+              "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-plane-api@sha256:50dea86d69904d317ebca4a921c387426506653f276f63cd04b50a197fe41071",
+              "imageDigest": "sha256:50dea86d69904d317ebca4a921c387426506653f276f63cd04b50a197fe41071",
+              "lastStatus": "RUNNING"
+            },
+            {
+              "name": "ecs-service-connect-ZnWk1",
+              "image": null,
+              "imageDigest": null,
+              "lastStatus": "RUNNING"
+            },
+            {
+              "name": "adot-collector",
+              "image": "amazon/aws-otel-collector@sha256:7968fb60db6a2390a47ba6a2df029745638486e285c9b2487da1b722d0855a3e",
+              "imageDigest": "sha256:7968fb60db6a2390a47ba6a2df029745638486e285c9b2487da1b722d0855a3e",
+              "lastStatus": "RUNNING"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "service": "velnor-admin-api",
+      "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-admin-api:73",
+      "desired": 1,
+      "running": 1,
+      "deployments": [
+        {
+          "status": "PRIMARY",
+          "taskDefinition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-admin-api:73",
+          "rolloutState": "COMPLETED"
+        }
+      ],
+      "declared_images": [
+        {
+          "name": "velnor-admin-api",
+          "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-admin-api@sha256:02a1a99b2e0429f6e2e8f63f59ce2791472d0c5597d580a0cae976eca4eebec5"
+        },
+        {
+          "name": "adot-collector",
+          "image": "amazon/aws-otel-collector:latest"
+        }
+      ],
+      "running_images": [
+        {
+          "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-admin-api:73",
+          "containers": [
+            {
+              "name": "adot-collector",
+              "image": "amazon/aws-otel-collector:latest",
+              "imageDigest": "sha256:955e240b27d7fd3c7995fd937db4b963975948eb553f656d8c37a564e5b5e07d",
+              "lastStatus": "RUNNING"
+            },
+            {
+              "name": "velnor-admin-api",
+              "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-admin-api@sha256:02a1a99b2e0429f6e2e8f63f59ce2791472d0c5597d580a0cae976eca4eebec5",
+              "imageDigest": "sha256:02a1a99b2e0429f6e2e8f63f59ce2791472d0c5597d580a0cae976eca4eebec5",
+              "lastStatus": "RUNNING"
+            },
+            {
+              "name": "ecs-service-connect-e3VVpaH",
+              "image": null,
+              "imageDigest": null,
+              "lastStatus": "RUNNING"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "service": "velnor-operator-api",
+      "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-operator-api:107",
+      "desired": 1,
+      "running": 1,
+      "deployments": [
+        {
+          "status": "PRIMARY",
+          "taskDefinition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-operator-api:107",
+          "rolloutState": "COMPLETED"
+        }
+      ],
+      "declared_images": [
+        {
+          "name": "velnor-operator-api",
+          "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-operator-api@sha256:197bb7b59bcc3a4d12ecb33e8cca3de14c4628a576a1dc8dec606e17e0415942"
+        },
+        {
+          "name": "adot-collector",
+          "image": "amazon/aws-otel-collector@sha256:7968fb60db6a2390a47ba6a2df029745638486e285c9b2487da1b722d0855a3e"
+        }
+      ],
+      "running_images": [
+        {
+          "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-operator-api:107",
+          "containers": [
+            {
+              "name": "velnor-operator-api",
+              "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-operator-api@sha256:197bb7b59bcc3a4d12ecb33e8cca3de14c4628a576a1dc8dec606e17e0415942",
+              "imageDigest": "sha256:197bb7b59bcc3a4d12ecb33e8cca3de14c4628a576a1dc8dec606e17e0415942",
+              "lastStatus": "RUNNING"
+            },
+            {
+              "name": "adot-collector",
+              "image": "amazon/aws-otel-collector@sha256:7968fb60db6a2390a47ba6a2df029745638486e285c9b2487da1b722d0855a3e",
+              "imageDigest": "sha256:7968fb60db6a2390a47ba6a2df029745638486e285c9b2487da1b722d0855a3e",
+              "lastStatus": "RUNNING"
+            },
+            {
+              "name": "ecs-service-connect-Q5waMpe",
+              "image": null,
+              "imageDigest": null,
+              "lastStatus": "RUNNING"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "service": "velnor-embed-worker",
+      "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-embed-worker:33",
+      "desired": 1,
+      "running": 1,
+      "deployments": [
+        {
+          "status": "PRIMARY",
+          "taskDefinition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-embed-worker:33",
+          "rolloutState": "COMPLETED"
+        }
+      ],
+      "declared_images": [
+        {
+          "name": "velnor-embed-worker",
+          "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-embed-worker@sha256:336856b66a31b53573cd04ef04918b1d16a6a2e7291df3984052cf5e6f03ff89"
+        },
+        {
+          "name": "adot-collector",
+          "image": "amazon/aws-otel-collector@sha256:7968fb60db6a2390a47ba6a2df029745638486e285c9b2487da1b722d0855a3e"
+        }
+      ],
+      "running_images": [
+        {
+          "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-embed-worker:33",
+          "containers": [
+            {
+              "name": "adot-collector",
+              "image": "amazon/aws-otel-collector@sha256:7968fb60db6a2390a47ba6a2df029745638486e285c9b2487da1b722d0855a3e",
+              "imageDigest": "sha256:7968fb60db6a2390a47ba6a2df029745638486e285c9b2487da1b722d0855a3e",
+              "lastStatus": "RUNNING"
+            },
+            {
+              "name": "velnor-embed-worker",
+              "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-embed-worker@sha256:336856b66a31b53573cd04ef04918b1d16a6a2e7291df3984052cf5e6f03ff89",
+              "imageDigest": "sha256:336856b66a31b53573cd04ef04918b1d16a6a2e7291df3984052cf5e6f03ff89",
+              "lastStatus": "RUNNING"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "service": "velnor-user-api",
+      "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-user-api:86",
+      "desired": 1,
+      "running": 1,
+      "deployments": [
+        {
+          "status": "PRIMARY",
+          "taskDefinition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-user-api:86",
+          "rolloutState": "COMPLETED"
+        }
+      ],
+      "declared_images": [
+        {
+          "name": "velnor-user-api",
+          "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-user-api@sha256:0102ee1d38de9b44be11319be039b2447e74a1e281e1b58ed02a5776993042f4"
+        },
+        {
+          "name": "adot-collector",
+          "image": "amazon/aws-otel-collector:latest"
+        }
+      ],
+      "running_images": [
+        {
+          "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-user-api:86",
+          "containers": [
+            {
+              "name": "ecs-service-connect-k252a",
+              "image": null,
+              "imageDigest": null,
+              "lastStatus": "RUNNING"
+            },
+            {
+              "name": "velnor-user-api",
+              "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-user-api@sha256:0102ee1d38de9b44be11319be039b2447e74a1e281e1b58ed02a5776993042f4",
+              "imageDigest": "sha256:0102ee1d38de9b44be11319be039b2447e74a1e281e1b58ed02a5776993042f4",
+              "lastStatus": "RUNNING"
+            },
+            {
+              "name": "adot-collector",
+              "image": "amazon/aws-otel-collector:latest",
+              "imageDigest": "sha256:955e240b27d7fd3c7995fd937db4b963975948eb553f656d8c37a564e5b5e07d",
+              "lastStatus": "RUNNING"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "service": "velnor-store-compliance-worker",
+      "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-store-compliance-worker:16",
+      "desired": 1,
+      "running": 1,
+      "deployments": [
+        {
+          "status": "PRIMARY",
+          "taskDefinition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-store-compliance-worker:16",
+          "rolloutState": "COMPLETED"
+        }
+      ],
+      "declared_images": [
+        {
+          "name": "velnor-store-compliance-worker",
+          "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-store-compliance-worker@sha256:7ee045afe4cca301ebb91388f9aaa5850271a09187c5997735a8f1ad8f5aa3f2"
+        },
+        {
+          "name": "adot-collector",
+          "image": "amazon/aws-otel-collector:latest"
+        }
+      ],
+      "running_images": [
+        {
+          "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-store-compliance-worker:16",
+          "containers": [
+            {
+              "name": "velnor-store-compliance-worker",
+              "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-store-compliance-worker@sha256:7ee045afe4cca301ebb91388f9aaa5850271a09187c5997735a8f1ad8f5aa3f2",
+              "imageDigest": "sha256:7ee045afe4cca301ebb91388f9aaa5850271a09187c5997735a8f1ad8f5aa3f2",
+              "lastStatus": "RUNNING"
+            },
+            {
+              "name": "adot-collector",
+              "image": "amazon/aws-otel-collector:latest",
+              "imageDigest": "sha256:955e240b27d7fd3c7995fd937db4b963975948eb553f656d8c37a564e5b5e07d",
+              "lastStatus": "RUNNING"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "service": "velnor-plane-setup",
+      "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-plane-setup:19",
+      "desired": 1,
+      "running": 1,
+      "deployments": [
+        {
+          "status": "PRIMARY",
+          "taskDefinition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-plane-setup:19",
+          "rolloutState": "COMPLETED"
+        }
+      ],
+      "declared_images": [
+        {
+          "name": "velnor-plane-setup",
+          "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-plane-api@sha256:50dea86d69904d317ebca4a921c387426506653f276f63cd04b50a197fe41071"
+        }
+      ],
+      "running_images": [
+        {
+          "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-plane-setup:19",
+          "containers": [
+            {
+              "name": "ecs-service-connect-iWRa5Qw",
+              "image": null,
+              "imageDigest": null,
+              "lastStatus": "RUNNING"
+            },
+            {
+              "name": "velnor-plane-setup",
+              "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-plane-api@sha256:50dea86d69904d317ebca4a921c387426506653f276f63cd04b50a197fe41071",
+              "imageDigest": "sha256:50dea86d69904d317ebca4a921c387426506653f276f63cd04b50a197fe41071",
+              "lastStatus": "RUNNING"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "service": "velnor-action-gate",
+      "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-action-gate:42",
+      "desired": 1,
+      "running": 1,
+      "deployments": [
+        {
+          "status": "PRIMARY",
+          "taskDefinition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-action-gate:42",
+          "rolloutState": "COMPLETED"
+        }
+      ],
+      "declared_images": [
+        {
+          "name": "velnor-action-gate",
+          "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-action-gate@sha256:ffd4ec2327c1c9e385edff55cd94b1c0fbcdbf8310d7de5d903876537e5ce11a"
+        },
+        {
+          "name": "adot-collector",
+          "image": "amazon/aws-otel-collector:latest"
+        }
+      ],
+      "running_images": [
+        {
+          "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-action-gate:42",
+          "containers": [
+            {
+              "name": "adot-collector",
+              "image": "amazon/aws-otel-collector:latest",
+              "imageDigest": "sha256:955e240b27d7fd3c7995fd937db4b963975948eb553f656d8c37a564e5b5e07d",
+              "lastStatus": "RUNNING"
+            },
+            {
+              "name": "velnor-action-gate",
+              "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-action-gate@sha256:ffd4ec2327c1c9e385edff55cd94b1c0fbcdbf8310d7de5d903876537e5ce11a",
+              "imageDigest": "sha256:ffd4ec2327c1c9e385edff55cd94b1c0fbcdbf8310d7de5d903876537e5ce11a",
+              "lastStatus": "RUNNING"
+            },
+            {
+              "name": "ecs-service-connect-yg9gXd",
+              "image": null,
+              "imageDigest": null,
+              "lastStatus": "RUNNING"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "service": "velnor-agent-gateway",
+      "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-agent-gateway:87",
+      "desired": 1,
+      "running": 1,
+      "deployments": [
+        {
+          "status": "PRIMARY",
+          "taskDefinition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-agent-gateway:87",
+          "rolloutState": "COMPLETED"
+        }
+      ],
+      "declared_images": [
+        {
+          "name": "velnor-agent-gateway",
+          "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-agent-gateway@sha256:360f094194c3b287f84e7346cf76978ea958af1a3516577123b75c26312fd0ed"
+        },
+        {
+          "name": "adot-collector",
+          "image": "amazon/aws-otel-collector@sha256:7968fb60db6a2390a47ba6a2df029745638486e285c9b2487da1b722d0855a3e"
+        }
+      ],
+      "running_images": [
+        {
+          "task_definition": "arn:aws:ecs:us-east-1:113831183566:task-definition/velnor-agent-gateway:87",
+          "containers": [
+            {
+              "name": "adot-collector",
+              "image": "amazon/aws-otel-collector@sha256:7968fb60db6a2390a47ba6a2df029745638486e285c9b2487da1b722d0855a3e",
+              "imageDigest": "sha256:7968fb60db6a2390a47ba6a2df029745638486e285c9b2487da1b722d0855a3e",
+              "lastStatus": "RUNNING"
+            },
+            {
+              "name": "ecs-service-connect-cqBkK",
+              "image": null,
+              "imageDigest": null,
+              "lastStatus": "RUNNING"
+            },
+            {
+              "name": "velnor-agent-gateway",
+              "image": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-agent-gateway@sha256:360f094194c3b287f84e7346cf76978ea958af1a3516577123b75c26312fd0ed",
+              "imageDigest": "sha256:360f094194c3b287f84e7346cf76978ea958af1a3516577123b75c26312fd0ed",
+              "lastStatus": "RUNNING"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "lambda_functions": [
+    {
+      "name": "velnor-dev-service-health-summary",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-dev-service-health-summary",
+      "version": "$LATEST",
+      "sha256": "SIrDuPJwLLmmEGsoKKYKjRIBMVy4POeLYvgSIrjDpxA=",
+      "modified": "2026-11-10T12:36:40.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-class-session-generator",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-class-session-generator",
+      "version": "$LATEST",
+      "sha256": "G4ECVoeCDi6faXOtcCNHDq+HPoFjC625uIg6mPiE7hQ=",
+      "modified": "2026-10-21T20:19:18.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-stripe-webhook",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-stripe-webhook",
+      "version": "$LATEST",
+      "sha256": "vwiGMzHib8+J9Ey/uMCdxJKaToAfgpMvmpvsRhf9PrI=",
+      "modified": "2026-10-21T20:22:30.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-entry-auth-dev",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-entry-auth-dev",
+      "version": "$LATEST",
+      "sha256": "JWz5xKlccSlfo7RSvNG+dH6Va9URZUAY0Bco32Ism6g=",
+      "modified": "2026-10-23T22:45:23.315+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-telemetry-rollup",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-telemetry-rollup",
+      "version": "$LATEST",
+      "sha256": "BD5CCDGQc8vDSgyxONl+xQwAuWli4TczMu1t0XFJjN0=",
+      "modified": "2026-10-21T20:22:50.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-fleet-pulse-alert-relay",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-fleet-pulse-alert-relay",
+      "version": "$LATEST",
+      "sha256": "Wo/tbjzMhQz4L0HjJYQcHLYymd1lJ1zUaVqiAP+CIZk=",
+      "modified": "2026-07-21T03:56:12.142+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-action-gate-ttl",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-action-gate-ttl",
+      "version": "$LATEST",
+      "sha256": "mq5gFAmG+MjevgvO5wVds/vepIic/361OsnxvjoyPuA=",
+      "modified": "2026-10-21T20:18:22.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-workflow-cost",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-workflow-cost",
+      "version": "$LATEST",
+      "sha256": "p8mISN3Hhw+xQoNEFRaxIP8+dTwaXESIBY8azFAcm0I=",
+      "modified": "2026-10-21T20:23:08.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-pre-token-lambda-dev",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-pre-token-lambda-dev",
+      "version": "$LATEST",
+      "sha256": "Z+Cag595hE39MALpufpGQsrUXU5crrGZyJDA6sz7KB0=",
+      "modified": "2026-10-23T22:45:15.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-aurora-bootstrap-runner",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-aurora-bootstrap-runner",
+      "version": "$LATEST",
+      "sha256": "AbQbfZXK8au1ljczC1Buig4ABgsptijjLa+J2usBTYE=",
+      "modified": "2026-10-31T18:43:56.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-push-dispatcher",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-push-dispatcher",
+      "version": "$LATEST",
+      "sha256": "SQk9t8nPYPfvQ9sc4fkUdLoDQUaD+T2ktUbqgVNgxtk=",
+      "modified": "2026-10-21T20:21:31.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-membership-reminder",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-membership-reminder",
+      "version": "$LATEST",
+      "sha256": "Weh+cig4QSeKkTus4Ps/zFzJz29gXmRKM0XxIqdceng=",
+      "modified": "2026-10-21T20:20:53.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-custom-message-lambda-dev",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-custom-message-lambda-dev",
+      "version": "$LATEST",
+      "sha256": "3C/vPbFpX1m5zEPt8w6A9/xjz73D1JCwHphIW/E3WsI=",
+      "modified": "2026-10-16T03:30:15.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-login-context",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-login-context",
+      "version": "$LATEST",
+      "sha256": "Bue/GZ59aYobrrh8f+MrL0bz/3HNKS7bluJZTBTIG2A=",
+      "modified": "2026-10-21T20:20:15.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-audit-archiver",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-audit-archiver",
+      "version": "$LATEST",
+      "sha256": "N1ZuiwmSu7qsD574LTHWqSJcGpQ6JLEiHSoz8wPAQG0=",
+      "modified": "2026-10-21T20:18:40.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-jsonb-audit",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-jsonb-audit",
+      "version": "$LATEST",
+      "sha256": "U5y52hnEMImeLsnFHrsxyNXej22N65Y/IJS8R73pMbI=",
+      "modified": "2026-10-21T20:19:57.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-sfn-auto-pause",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-sfn-auto-pause",
+      "version": "$LATEST",
+      "sha256": "Xmj36G+39Hcg1ju80DydKfgLO4mBoNgGj794VPoZkRU=",
+      "modified": "2026-10-21T20:21:50.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-provision-finalize",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-provision-finalize",
+      "version": "$LATEST",
+      "sha256": "pnVoeeFXk+5P0b3hD75oEKNhYYfkEi6REX4P7JJ60oo=",
+      "modified": "2026-11-05T17:21:18.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-identity-authentication",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-identity-authentication",
+      "version": "$LATEST",
+      "sha256": "8GcKaHwaJGtq8gBBpyKZ3mV4AgJOET5P4/W19Q9U71Y=",
+      "modified": "2026-10-21T20:19:37.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-member-risk",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-member-risk",
+      "version": "$LATEST",
+      "sha256": "6rYIAQAIVajJYBf1vEYETfKOfEPMaoJEw72Q/rQxHE8=",
+      "modified": "2026-10-21T20:20:34.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-maintenance-gc",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-maintenance-gc",
+      "version": "$LATEST",
+      "sha256": "foXTMcYc/Av2C2HA+cPzXa06Go3JAm4s9L/mLNayblk=",
+      "modified": "2026-10-23T22:25:04.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-auth-canary",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-auth-canary",
+      "version": "$LATEST",
+      "sha256": "4kR7nJN/eXcZRxI1a8D3H4+nbh75P+cJU02fQsMXPmE=",
+      "modified": "2026-10-21T20:18:59.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-maintenance-verify",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-maintenance-verify",
+      "version": "$LATEST",
+      "sha256": "foXTMcYc/Av2C2HA+cPzXa06Go3JAm4s9L/mLNayblk=",
+      "modified": "2026-10-23T22:24:55.000+0000",
+      "package": "Zip"
+    },
+    {
+      "name": "velnor-spaces",
+      "arn": "arn:aws:lambda:us-east-1:113831183566:function:velnor-spaces",
+      "version": "$LATEST",
+      "sha256": "I8J5ikF4tuMYoYYGfCBIbODc1K0VY1kmIW6cMvLjjfo=",
+      "modified": "2026-11-07T16:54:36.000+0000",
+      "package": "Zip"
+    }
+  ]
+}

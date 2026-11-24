@@ -1,0 +1,2797 @@
+{
+  "review_id": "first-onboarding-20261123-rc1",
+  "status": "draft_source_freeze_not_deployable",
+  "captured_at_utc": "2026-11-24T03:24:39.591972+00:00",
+  "production_region": "us-east-1",
+  "production_account_id": null,
+  "production_deployment_approved": false,
+  "production_deployment_performed": false,
+  "baseline_production_manifest": null,
+  "repositories": [
+    {
+      "repository": "VelnorLabs/velnor-iac",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "d3b2fe0e041b7745f3f925dc5d74185712a8aed1",
+      "source_ci": {
+        "id": 44630274570,
+        "head_sha": "d3b2fe0e041b7745f3f925dc5d74185712a8aed1",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/44630274570"
+      },
+      "native_version_files": {},
+      "pipeline_pr": {
+        "number": 482,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": true,
+        "mergeable_state": "clean",
+        "html_url": "https://github.com/VelnorLabs/velnor-iac/pull/482"
+      },
+      "pipeline_head_sha": "12a3e9eb016cae67669dc537fc8376c20bcc30b9",
+      "pipeline_checks": [
+        {
+          "name": "Terraform apply",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610916230"
+        },
+        {
+          "name": "tofu test (accounts-dev-codebuild)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283927"
+        },
+        {
+          "name": "tofu test (accounts-dev-action_gate_proposals)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283887"
+        },
+        {
+          "name": "tofu test (accounts-dev-stepfunctions)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283871"
+        },
+        {
+          "name": "tofu test (accounts-dev-stepfunctions_refusal_archive)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283867"
+        },
+        {
+          "name": "tofu test (accounts-dev-stepfunctions_tool_log_archive)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283866"
+        },
+        {
+          "name": "tofu test (accounts-dev-waf)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283856"
+        },
+        {
+          "name": "tofu test (iam-policy-size)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283855"
+        },
+        {
+          "name": "tofu test (modules-safe_workflow)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283853"
+        },
+        {
+          "name": "tofu test (accounts-dev-vpc)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283852"
+        },
+        {
+          "name": "tofu test (accounts-dev-ecs-user-api)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283824"
+        },
+        {
+          "name": "tofu test (accounts-dev-ecs-store-compliance-worker)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283821"
+        },
+        {
+          "name": "tofu test (accounts-dev-cognito)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283818"
+        },
+        {
+          "name": "tofu test (bootstrap)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283816"
+        },
+        {
+          "name": "tofu test (accounts-dev-ecs-mlflow)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283808"
+        },
+        {
+          "name": "tofu test (accounts-dev-stepfunctions_telemetry_rollup)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283806"
+        },
+        {
+          "name": "tofu test (accounts-dev-ecr)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283802"
+        },
+        {
+          "name": "tofu test (accounts-dev-ecs-embed-worker)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283797"
+        },
+        {
+          "name": "tofu test (accounts-dev-dashboards)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283794"
+        },
+        {
+          "name": "tofu test (accounts-dev-stepfunctions_membership_renewal)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283792"
+        },
+        {
+          "name": "tofu test (accounts-dev-applied_fanout)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283788"
+        },
+        {
+          "name": "tofu test (accounts-dev-aurora)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283785"
+        },
+        {
+          "name": "tofu test (accounts-dev-agent_flag_fanout)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283783"
+        },
+        {
+          "name": "tofu test (accounts-dev-ecs-plane-api)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283780"
+        },
+        {
+          "name": "tofu test (accounts-dev-ecs-migrate-apply)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283776"
+        },
+        {
+          "name": "tofu test (accounts-dev-ecs-action-gate)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283775"
+        },
+        {
+          "name": "tofu test (accounts-dev-eventbridge_telemetry_rollup)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283770"
+        },
+        {
+          "name": "tofu test (accounts-dev-lambda)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283761"
+        },
+        {
+          "name": "tofu test (accounts-dev-adot)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283759"
+        },
+        {
+          "name": "tofu test (accounts-dev-mlflow)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283754"
+        },
+        {
+          "name": "tofu test (accounts-dev-kms)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283753"
+        },
+        {
+          "name": "tofu test (accounts-dev-ecs-agent-gateway)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283746"
+        },
+        {
+          "name": "tofu test (accounts-dev-ecs-admin-api)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283741"
+        },
+        {
+          "name": "tofu test (accounts-dev-rds)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283740"
+        },
+        {
+          "name": "tofu test (accounts-dev-sfn)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283733"
+        },
+        {
+          "name": "tofu test (accounts-dev-ecs-operator-api)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283725"
+        },
+        {
+          "name": "tofu test (accounts-dev-ecs-chat-api)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283718"
+        },
+        {
+          "name": "tofu test (accounts-dev-catalog_invalidate)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283714"
+        },
+        {
+          "name": "tofu test (accounts-dev-cloudwatch)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283713"
+        },
+        {
+          "name": "tofu test (accounts-dev-dns)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283710"
+        },
+        {
+          "name": "Security scan",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283436"
+        },
+        {
+          "name": "SBOM",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128610283418"
+        },
+        {
+          "name": "Shared CI checks / Stage 2 \u00b7 build \u2192 push \u2192 cosign sign",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128609354060"
+        },
+        {
+          "name": "Shared CI checks / Stage 1 \u00b7 lint \u2192 unit \u2192 build \u2192 Trivy \u2192 SBOM \u2192 PII lint",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128609060549"
+        },
+        {
+          "name": "Discover tofu test suites",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128609060471"
+        },
+        {
+          "name": "Shared DDL agrees with the velnor-schemas mirror (LE-452)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128609060459"
+        },
+        {
+          "name": "Lint",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128609060450"
+        },
+        {
+          "name": "Isolation audit authority (PostgreSQL 16)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128609060424"
+        },
+        {
+          "name": "Identity runtime authority (PostgreSQL 16)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677764/job/128609060297"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677887/job/128609049634"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677887/job/128609049583"
+        },
+        {
+          "name": "eval-on-pr / eval/on-pr",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677935/job/128609049239"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-iac/actions/runs/42440677887/job/128609048458"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "554bf7380e338029cbca1e7eadac37278702990df18ced148c3d304b1cc5c3ac"
+    },
+    {
+      "repository": "VelnorLabs/velnor-schemas",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "cae5f75a2cbc537464dcbeb458cc4df959611ec2",
+      "source_ci": {
+        "id": 45077466438,
+        "head_sha": "cae5f75a2cbc537464dcbeb458cc4df959611ec2",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-schemas/actions/runs/45077466438"
+      },
+      "native_version_files": {
+        "VERSION": "0.158.0\n",
+        "package.json": "0.1.0"
+      },
+      "pipeline_pr": {
+        "number": 252,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": null,
+        "mergeable_state": "unknown",
+        "html_url": "https://github.com/VelnorLabs/velnor-schemas/pull/252"
+      },
+      "pipeline_head_sha": "ca92ec17170cbdda11efbef0ddae3a82e25ba467",
+      "pipeline_checks": [
+        {
+          "name": "SBOM + cosign",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-schemas/actions/runs/42440685691/job/128609795116"
+        },
+        {
+          "name": "Trivy security scan",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-schemas/actions/runs/42440685691/job/128609795114"
+        },
+        {
+          "name": "v0.sql re-applies cleanly (LE-533)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-schemas/actions/runs/42440685691/job/128609257799"
+        },
+        {
+          "name": "Contract-coverage audit tests (LE-480)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-schemas/actions/runs/42440685691/job/128609075538"
+        },
+        {
+          "name": "Lint",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-schemas/actions/runs/42440685691/job/128609075461"
+        },
+        {
+          "name": "Shared SQL contracts",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-schemas/actions/runs/42440685691/job/128609075431"
+        },
+        {
+          "name": "ECR login (pull-through cache)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-schemas/actions/runs/42440685691/job/128609075367"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-schemas/actions/runs/42440685935/job/128609074975"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-schemas/actions/runs/42440685935/job/128609074934"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-schemas/actions/runs/42440685935/job/128609074300"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "d5114654bd915b700e5682061876f5059f91497ea81533f0025bbce56462a740"
+    },
+    {
+      "repository": "VelnorLabs/velnor-platform-sdk-go",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "a88b073f79dffa12539f1be5874ed1d4aaf9f553",
+      "source_ci": {
+        "id": 44693679220,
+        "head_sha": "a88b073f79dffa12539f1be5874ed1d4aaf9f553",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-platform-sdk-go/actions/runs/44693679220"
+      },
+      "native_version_files": {},
+      "pipeline_pr": {
+        "number": 76,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": null,
+        "mergeable_state": "unknown",
+        "html_url": "https://github.com/VelnorLabs/velnor-platform-sdk-go/pull/76"
+      },
+      "pipeline_head_sha": "a1def8d1091699258025307c1154505453470e37",
+      "pipeline_checks": [
+        {
+          "name": "SBOM",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-go/actions/runs/42440682459/job/128610413619"
+        },
+        {
+          "name": "Customer identity authority (PostgreSQL 16)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-go/actions/runs/42440682459/job/128610413602"
+        },
+        {
+          "name": "Build",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-go/actions/runs/42440682459/job/128610413599"
+        },
+        {
+          "name": "Test",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-go/actions/runs/42440682459/job/128610413597"
+        },
+        {
+          "name": "Security scan",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-go/actions/runs/42440682459/job/128610413574"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-go/actions/runs/42440682727/job/128609064753"
+        },
+        {
+          "name": "Lint",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-go/actions/runs/42440682459/job/128609064646"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-go/actions/runs/42440682727/job/128609064633"
+        },
+        {
+          "name": "Vendored DDL drift (LE-532)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-go/actions/runs/42440682459/job/128609064630"
+        },
+        {
+          "name": "SDK bypass check (lint gate)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-go/actions/runs/42440682459/job/128609064541"
+        },
+        {
+          "name": "Proposals module (T-W5-029)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-go/actions/runs/42440682459/job/128609064539"
+        },
+        {
+          "name": "ECR login (pull-through cache)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-go/actions/runs/42440682459/job/128609064479"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-go/actions/runs/42440682727/job/128609063775"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "17fb26c265fc0b44f5971e867605e2590b5dcb80f35b7b281fc4912ffb30c876"
+    },
+    {
+      "repository": "VelnorLabs/velnor-platform-sdk-py",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "3869d1167f75db5b89dbecb171b17ffd64f534ff",
+      "source_ci": {
+        "id": 44656333076,
+        "head_sha": "3869d1167f75db5b89dbecb171b17ffd64f534ff",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-platform-sdk-py/actions/runs/44656333076"
+      },
+      "native_version_files": {
+        "pyproject.toml": "version = \"0.12.1\""
+      },
+      "pipeline_pr": {
+        "number": 77,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": null,
+        "mergeable_state": "unknown",
+        "html_url": "https://github.com/VelnorLabs/velnor-platform-sdk-py/pull/77"
+      },
+      "pipeline_head_sha": "eec4961937f5dcd018f3edc7c7c423f1b46ae587",
+      "pipeline_checks": [
+        {
+          "name": "Publish to CodeArtifact",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-py/actions/runs/42440682967/job/128609777624"
+        },
+        {
+          "name": "SBOM",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-py/actions/runs/42440682967/job/128609260793"
+        },
+        {
+          "name": "Test",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-py/actions/runs/42440682967/job/128609260758"
+        },
+        {
+          "name": "Trivy SARIF scan",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-py/actions/runs/42440682967/job/128609260730"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-py/actions/runs/42440683200/job/128609066239"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-py/actions/runs/42440683200/job/128609066224"
+        },
+        {
+          "name": "SDK bypass check (lint gate)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-py/actions/runs/42440682967/job/128609066210"
+        },
+        {
+          "name": "Lint",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-py/actions/runs/42440682967/job/128609066135"
+        },
+        {
+          "name": "Vendored DDL drift (LE-532)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-py/actions/runs/42440682967/job/128609066071"
+        },
+        {
+          "name": "ECR login (pull-through cache)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-py/actions/runs/42440682967/job/128609065906"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-platform-sdk-py/actions/runs/42440683200/job/128609065289"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "c037cdbd8fd6127f4fda617198cfc646831f6ddc1bfaecf58c70d60821187279"
+    },
+    {
+      "repository": "VelnorLabs/velnor-design-tokens",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "39e7510193ff0e331b4cc7a08afc19a67a9a313f",
+      "source_ci": {
+        "id": 41169618969,
+        "head_sha": "39e7510193ff0e331b4cc7a08afc19a67a9a313f",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-design-tokens/actions/runs/41169618969"
+      },
+      "native_version_files": {
+        "package.json": "0.32.0"
+      },
+      "pipeline_pr": {
+        "number": 41,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": true,
+        "mergeable_state": "clean",
+        "html_url": "https://github.com/VelnorLabs/velnor-design-tokens/pull/41"
+      },
+      "pipeline_head_sha": "fee124d8c6e2d81bd04218c7854fdc9c670dbad7",
+      "pipeline_checks": [
+        {
+          "name": "Publish verified package",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-design-tokens/actions/runs/42440712977/job/128609998537"
+        },
+        {
+          "name": "Cosign sign (SBOM)",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-design-tokens/actions/runs/42440712977/job/128609998482"
+        },
+        {
+          "name": "SBOM",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-design-tokens/actions/runs/42440712977/job/128609489852"
+        },
+        {
+          "name": "Build",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-design-tokens/actions/runs/42440712977/job/128609292032"
+        },
+        {
+          "name": "Tokens (drift guard + contract tests)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-design-tokens/actions/runs/42440712977/job/128609292031"
+        },
+        {
+          "name": "Security scan (Trivy)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-design-tokens/actions/runs/42440712977/job/128609292025"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-design-tokens/actions/runs/42440713243/job/128609156691"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-design-tokens/actions/runs/42440713243/job/128609156606"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-design-tokens/actions/runs/42440713243/job/128609155786"
+        },
+        {
+          "name": "Lint & Type-check",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-design-tokens/actions/runs/42440712977/job/128609154886"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "5bb30bd832f81af0ce63a1cc35b0295a09e0f4f8a7d76d61f7fd7685a52da7cf"
+    },
+    {
+      "repository": "VelnorLabs/velnor-plane-api",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "9e1d2727aaf6ee65b2ad0f10c1962ccea1fa8adf",
+      "source_ci": {
+        "id": 45081420068,
+        "head_sha": "9e1d2727aaf6ee65b2ad0f10c1962ccea1fa8adf",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-plane-api/actions/runs/45081420068"
+      },
+      "native_version_files": {},
+      "pipeline_pr": {
+        "number": 288,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": null,
+        "mergeable_state": "unknown",
+        "html_url": "https://github.com/VelnorLabs/velnor-plane-api/pull/288"
+      },
+      "pipeline_head_sha": "2daafd82abe770d92dac785ae11bddc2de93addc",
+      "pipeline_checks": [
+        {
+          "name": "Deploy dev",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-plane-api/actions/runs/42440681518/job/128610179422"
+        },
+        {
+          "name": "ci / Stage 2 \u00b7 build \u2192 push \u2192 cosign sign",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-plane-api/actions/runs/42440681518/job/128610179147"
+        },
+        {
+          "name": "SDK bypass check / SDK bypass check (go)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-plane-api/actions/runs/42440681518/job/128610178259"
+        },
+        {
+          "name": "Schema bypass check / Schema bypass check (Q-2)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-plane-api/actions/runs/42440681518/job/128610178230"
+        },
+        {
+          "name": "Golden integration (Postgres)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-plane-api/actions/runs/42440681518/job/128609462946"
+        },
+        {
+          "name": "ECR login (pull-through cache)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-plane-api/actions/runs/42440681518/job/128609080902"
+        },
+        {
+          "name": "sqlc drift gate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-plane-api/actions/runs/42440681518/job/128609080874"
+        },
+        {
+          "name": "Atlas migration directories valid",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-plane-api/actions/runs/42440681518/job/128609080872"
+        },
+        {
+          "name": "ci / Stage 1 \u00b7 lint \u2192 unit \u2192 build \u2192 Trivy \u2192 SBOM \u2192 PII lint",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-plane-api/actions/runs/42440681518/job/128609080859"
+        },
+        {
+          "name": "Deploy ordering gate (LE-459)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-plane-api/actions/runs/42440681518/job/128609080705"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-plane-api/actions/runs/42440681436/job/128609060920"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-plane-api/actions/runs/42440681436/job/128609060825"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-plane-api/actions/runs/42440681436/job/128609059950"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [
+        {
+          "file": "/Volumes/MacOS-Ext/CoWork/SMB-SaaS/platform-intelligence-20261111/evidence/velnor-plane-api-release-20261122T232413Z/signed-release.json",
+          "sha256": "aba3665c68c5179983e101f06c688a4654388b677a8f725e55e29a70e69f725e",
+          "record": {
+            "status": "verified",
+            "verified_at": "2026-11-22T23:24:19.725872+00:00",
+            "repository": "velnor-plane-api",
+            "source": "9e1d2727aaf6ee65b2ad0f10c1962ccea1fa8adf",
+            "image_uri": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-plane-api@sha256:50dea86d69904d317ebca4a921c387426506653f276f63cd04b50a197fe41071",
+            "image_digest": "sha256:50dea86d69904d317ebca4a921c387426506653f276f63cd04b50a197fe41071",
+            "config_digest": "sha256:a390acac18808f6b2b9703859df127ac02eb8261d41af38aafb11113695765bf",
+            "source_labels_verified": true,
+            "platform": "linux/amd64",
+            "checks": [
+              {
+                "operation": "verify",
+                "verified_count": 1,
+                "transparency_verification_enabled": true
+              },
+              {
+                "operation": "verify-attestation",
+                "verified_count": 1,
+                "transparency_verification_enabled": true
+              }
+            ],
+            "components": [
+              {
+                "name": "github.com/VelnorLabs/velnor-platform-sdk-go",
+                "version": "v0.1.23-0.20261120071642-cd00eb1ab8cd"
+              },
+              {
+                "name": "github.com/VelnorLabs/velnor-platform-sdk-go",
+                "version": "v0.1.23-0.20261120071642-cd00eb1ab8cd"
+              },
+              {
+                "name": "github.com/VelnorLabs/velnor-platform-sdk-go",
+                "version": "v0.1.23-0.20261120071642-cd00eb1ab8cd"
+              },
+              {
+                "name": "github.com/VelnorLabs/velnor-schemas",
+                "version": "v0.154.1-0.20261122222332-cae5f75a2cbc"
+              },
+              {
+                "name": "github.com/VelnorLabs/velnor-schemas",
+                "version": "v0.154.1-0.20261122222332-cae5f75a2cbc"
+              },
+              {
+                "name": "github.com/VelnorLabs/velnor-schemas",
+                "version": "v0.154.1-0.20261122222332-cae5f75a2cbc"
+              },
+              {
+                "name": "go.opentelemetry.io/otel",
+                "version": "v1.44.0"
+              },
+              {
+                "name": "go.opentelemetry.io/otel",
+                "version": "v1.44.0"
+              },
+              {
+                "name": "go.opentelemetry.io/otel",
+                "version": "v1.44.0"
+              },
+              {
+                "name": "go.opentelemetry.io/otel/metric",
+                "version": "v1.44.0"
+              },
+              {
+                "name": "go.opentelemetry.io/otel/metric",
+                "version": "v1.44.0"
+              },
+              {
+                "name": "go.opentelemetry.io/otel/metric",
+                "version": "v1.44.0"
+              },
+              {
+                "name": "go.opentelemetry.io/otel/trace",
+                "version": "v1.44.0"
+              },
+              {
+                "name": "go.opentelemetry.io/otel/trace",
+                "version": "v1.44.0"
+              },
+              {
+                "name": "go.opentelemetry.io/otel/trace",
+                "version": "v1.44.0"
+              },
+              {
+                "name": "stdlib",
+                "version": "go1.26.11"
+              },
+              {
+                "name": "stdlib",
+                "version": "go1.26.11"
+              },
+              {
+                "name": "stdlib",
+                "version": "go1.26.11"
+              }
+            ],
+            "build_run": 45081420068,
+            "temporary_registry_credentials_removed": true,
+            "no_runtime_deployment": true
+          },
+          "live_development_digest_matches": true,
+          "cryptography_reverified_this_audit": false
+        }
+      ],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "f379c29fa514dba773a8ceb6d449e9ffb6776b237a16a56604636740552ee9d0"
+    },
+    {
+      "repository": "VelnorLabs/velnor-admin-api",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "682d557c65a74aa1f1caab3aff99f3cfc2792f79",
+      "source_ci": {
+        "id": 42162835974,
+        "head_sha": "682d557c65a74aa1f1caab3aff99f3cfc2792f79",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-admin-api/actions/runs/42162835974"
+      },
+      "native_version_files": {},
+      "pipeline_pr": {
+        "number": 85,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": true,
+        "mergeable_state": "clean",
+        "html_url": "https://github.com/VelnorLabs/velnor-admin-api/pull/85"
+      },
+      "pipeline_head_sha": "2758ecd08a0512889610fd21e89f0b8eafa901f4",
+      "pipeline_checks": [
+        {
+          "name": "Deploy dev",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-api/actions/runs/42440667939/job/128610452908"
+        },
+        {
+          "name": "ci / Stage 2 \u00b7 build \u2192 push \u2192 cosign sign",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-api/actions/runs/42440667939/job/128610452535"
+        },
+        {
+          "name": "Schema bypass check / Schema bypass check (Q-2)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-api/actions/runs/42440667939/job/128610452155"
+        },
+        {
+          "name": "SDK bypass check / SDK bypass check (go)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-api/actions/runs/42440667939/job/128610452152"
+        },
+        {
+          "name": "Real-Postgres handler tests (LE-365)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-api/actions/runs/42440667939/job/128609803632"
+        },
+        {
+          "name": "Contract coverage gate / Contract coverage gate (routes and calls declared in the spec)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-api/actions/runs/42440667939/job/128609025027"
+        },
+        {
+          "name": "Vendored DDL drift (LE-317)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-api/actions/runs/42440667939/job/128609025011"
+        },
+        {
+          "name": "ci / Stage 1 \u00b7 lint \u2192 unit \u2192 build \u2192 Trivy \u2192 SBOM \u2192 PII lint",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-api/actions/runs/42440667939/job/128609024993"
+        },
+        {
+          "name": "Vendored applier DDL drift (LE-365)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-api/actions/runs/42440667939/job/128609024899"
+        },
+        {
+          "name": "SLA widget contract drift (LE-464)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-api/actions/runs/42440667939/job/128609024885"
+        },
+        {
+          "name": "ECR login (pull-through cache)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-api/actions/runs/42440667939/job/128609024754"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-api/actions/runs/42440667951/job/128609017892"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-api/actions/runs/42440667951/job/128609017651"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-api/actions/runs/42440667951/job/128609016993"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "ecfff050306a592abccf44964dcccedc2c89929c007c4782c1769d32698f4d5e"
+    },
+    {
+      "repository": "VelnorLabs/velnor-operator-api",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "6e653966cb74cfa2dd8e761db7f0446e48a22b64",
+      "source_ci": {
+        "id": 45078033941,
+        "head_sha": "6e653966cb74cfa2dd8e761db7f0446e48a22b64",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-operator-api/actions/runs/45078033941"
+      },
+      "native_version_files": {},
+      "pipeline_pr": {
+        "number": 117,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": null,
+        "mergeable_state": "unknown",
+        "html_url": "https://github.com/VelnorLabs/velnor-operator-api/pull/117"
+      },
+      "pipeline_head_sha": "ddf67e1b2cef205dae10e4aed6bebb975ddf9af3",
+      "pipeline_checks": [
+        {
+          "name": "Deploy dev",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-operator-api/actions/runs/42440681014/job/128610334055"
+        },
+        {
+          "name": "Invitation transactions (Postgres)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-operator-api/actions/runs/42440681014/job/128609549444"
+        },
+        {
+          "name": "ci / Stage 2 \u00b7 build \u2192 push \u2192 cosign sign",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-operator-api/actions/runs/42440681014/job/128609547298"
+        },
+        {
+          "name": "Schema bypass check / Schema bypass check (Q-2)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-operator-api/actions/runs/42440681014/job/128609546696"
+        },
+        {
+          "name": "SDK bypass check / SDK bypass check (go)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-operator-api/actions/runs/42440681014/job/128609546688"
+        },
+        {
+          "name": "ci / Stage 1 \u00b7 lint \u2192 unit \u2192 build \u2192 Trivy \u2192 SBOM \u2192 PII lint",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-operator-api/actions/runs/42440681014/job/128609108449"
+        },
+        {
+          "name": "ECR login (pull-through cache)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-operator-api/actions/runs/42440681014/job/128609108209"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-operator-api/actions/runs/42440680992/job/128609059397"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-operator-api/actions/runs/42440680992/job/128609059222"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-operator-api/actions/runs/42440680992/job/128609058356"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [
+        {
+          "file": "/Volumes/MacOS-Ext/CoWork/SMB-SaaS/platform-intelligence-20261111/evidence/velnor-operator-api-release-20261122T223845Z/signed-release.json",
+          "sha256": "e3a24805d3f59d88b53bb95b6ef6f0d5a3a08ea6eae1b7357b9ef24e24484a2f",
+          "record": {
+            "status": "verified",
+            "verified_at": "2026-11-22T22:38:51.579767+00:00",
+            "repository": "velnor-operator-api",
+            "source": "6e653966cb74cfa2dd8e761db7f0446e48a22b64",
+            "image_uri": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-operator-api@sha256:197bb7b59bcc3a4d12ecb33e8cca3de14c4628a576a1dc8dec606e17e0415942",
+            "image_digest": "sha256:197bb7b59bcc3a4d12ecb33e8cca3de14c4628a576a1dc8dec606e17e0415942",
+            "config_digest": "sha256:c4b29b6ecb68200b595807b72b28045f9fe23cb2cac9863d99600e720401adec",
+            "source_labels_verified": true,
+            "platform": "linux/amd64",
+            "checks": [
+              {
+                "operation": "verify",
+                "verified_count": 1,
+                "transparency_verification_enabled": true
+              },
+              {
+                "operation": "verify-attestation",
+                "verified_count": 1,
+                "transparency_verification_enabled": true
+              }
+            ],
+            "components": [
+              {
+                "name": "github.com/VelnorLabs/velnor-platform-sdk-go",
+                "version": "v0.1.23-0.20261030145947-84d9bafe2c91"
+              },
+              {
+                "name": "github.com/VelnorLabs/velnor-schemas",
+                "version": "v0.154.1-0.20261122222332-cae5f75a2cbc"
+              },
+              {
+                "name": "go.opentelemetry.io/otel",
+                "version": "v1.43.0"
+              },
+              {
+                "name": "go.opentelemetry.io/otel/metric",
+                "version": "v1.43.0"
+              },
+              {
+                "name": "go.opentelemetry.io/otel/trace",
+                "version": "v1.43.0"
+              },
+              {
+                "name": "stdlib",
+                "version": "go1.26.11"
+              }
+            ],
+            "build_run": 45078033941,
+            "temporary_registry_credentials_removed": true,
+            "no_runtime_deployment": true
+          },
+          "live_development_digest_matches": true,
+          "cryptography_reverified_this_audit": false
+        },
+        {
+          "file": "/Volumes/MacOS-Ext/CoWork/SMB-SaaS/platform-intelligence-20261111/evidence/velnor-operator-api-release-20261122T232448Z/signed-release.json",
+          "sha256": "11387dacd60b767045ae096d36a62f7945e7b3ac05f51d442c5843d67f8e6550",
+          "record": {
+            "status": "verified",
+            "verified_at": "2026-11-22T23:24:53.708046+00:00",
+            "repository": "velnor-operator-api",
+            "source": "6e653966cb74cfa2dd8e761db7f0446e48a22b64",
+            "image_uri": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-operator-api@sha256:197bb7b59bcc3a4d12ecb33e8cca3de14c4628a576a1dc8dec606e17e0415942",
+            "image_digest": "sha256:197bb7b59bcc3a4d12ecb33e8cca3de14c4628a576a1dc8dec606e17e0415942",
+            "config_digest": "sha256:c4b29b6ecb68200b595807b72b28045f9fe23cb2cac9863d99600e720401adec",
+            "source_labels_verified": true,
+            "platform": "linux/amd64",
+            "checks": [
+              {
+                "operation": "verify",
+                "verified_count": 1,
+                "transparency_verification_enabled": true
+              },
+              {
+                "operation": "verify-attestation",
+                "verified_count": 1,
+                "transparency_verification_enabled": true
+              }
+            ],
+            "components": [
+              {
+                "name": "github.com/VelnorLabs/velnor-platform-sdk-go",
+                "version": "v0.1.23-0.20261030145947-84d9bafe2c91"
+              },
+              {
+                "name": "github.com/VelnorLabs/velnor-schemas",
+                "version": "v0.154.1-0.20261122222332-cae5f75a2cbc"
+              },
+              {
+                "name": "go.opentelemetry.io/otel",
+                "version": "v1.43.0"
+              },
+              {
+                "name": "go.opentelemetry.io/otel/metric",
+                "version": "v1.43.0"
+              },
+              {
+                "name": "go.opentelemetry.io/otel/trace",
+                "version": "v1.43.0"
+              },
+              {
+                "name": "stdlib",
+                "version": "go1.26.11"
+              }
+            ],
+            "build_run": 45078033941,
+            "temporary_registry_credentials_removed": true,
+            "no_runtime_deployment": true
+          },
+          "live_development_digest_matches": true,
+          "cryptography_reverified_this_audit": false
+        }
+      ],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "5344e1d79f9af0eb0be72f0faa33d642a6a6ab2f026394fe5166c9cd96647323"
+    },
+    {
+      "repository": "VelnorLabs/velnor-user-api",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "2e06c21eabe3a20f6debea0316f5e721a5b2cfc8",
+      "source_ci": {
+        "id": 42696348912,
+        "head_sha": "2e06c21eabe3a20f6debea0316f5e721a5b2cfc8",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-user-api/actions/runs/42696348912"
+      },
+      "native_version_files": {},
+      "pipeline_pr": {
+        "number": 93,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": null,
+        "mergeable_state": "unknown",
+        "html_url": "https://github.com/VelnorLabs/velnor-user-api/pull/93"
+      },
+      "pipeline_head_sha": "8c3ad8a7588bded9987b5122ad1e3863732391d3",
+      "pipeline_checks": [
+        {
+          "name": "Deploy dev",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-user-api/actions/runs/42440689148/job/128609777569"
+        },
+        {
+          "name": "ci / Stage 2 \u00b7 build \u2192 push \u2192 cosign sign",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-user-api/actions/runs/42440689148/job/128609777194"
+        },
+        {
+          "name": "SDK bypass check / SDK bypass check (go)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-user-api/actions/runs/42440689148/job/128609776418"
+        },
+        {
+          "name": "User-api DB tests (real Postgres, real plane-api migrations)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-user-api/actions/runs/42440689148/job/128609298703"
+        },
+        {
+          "name": "ECR login (pull-through cache)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-user-api/actions/runs/42440689148/job/128609126003"
+        },
+        {
+          "name": "ci / Stage 1 \u00b7 lint \u2192 unit \u2192 build \u2192 Trivy \u2192 SBOM \u2192 PII lint",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-user-api/actions/runs/42440689148/job/128609125881"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-user-api/actions/runs/42440689147/job/128609085449"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-user-api/actions/runs/42440689147/job/128609085145"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-user-api/actions/runs/42440689147/job/128609084430"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "52b979db34cf8544dc1482e6c97b2f6a00e8cc276d035d7e77037656e268667e"
+    },
+    {
+      "repository": "VelnorLabs/velnor-action-gate",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "1787bd119016f3bf4a450ddcfb2b4bcf34719a85",
+      "source_ci": {
+        "id": 42712709948,
+        "head_sha": "1787bd119016f3bf4a450ddcfb2b4bcf34719a85",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-action-gate/actions/runs/42712709948"
+      },
+      "native_version_files": {},
+      "pipeline_pr": {
+        "number": 68,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": null,
+        "mergeable_state": "unknown",
+        "html_url": "https://github.com/VelnorLabs/velnor-action-gate/pull/68"
+      },
+      "pipeline_head_sha": "29e6b1ea7abeb113c1b5f2b4d3d42a185e793c53",
+      "pipeline_checks": [
+        {
+          "name": "Deploy dev",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-action-gate/actions/runs/42440629736/job/128609377460"
+        },
+        {
+          "name": "ci / Stage 2 \u00b7 build \u2192 push \u2192 cosign sign",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-action-gate/actions/runs/42440629736/job/128609377078"
+        },
+        {
+          "name": "SDK bypass check / SDK bypass check (go)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-action-gate/actions/runs/42440629736/job/128609376820"
+        },
+        {
+          "name": "Schema bypass check / Schema bypass check (Q-2)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-action-gate/actions/runs/42440629736/job/128609376764"
+        },
+        {
+          "name": "Real-Postgres store tests (LE-515)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-action-gate/actions/runs/42440629736/job/128609072883"
+        },
+        {
+          "name": "ci / Stage 1 \u00b7 lint \u2192 unit \u2192 build \u2192 Trivy \u2192 SBOM \u2192 PII lint",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-action-gate/actions/runs/42440629736/job/128608904189"
+        },
+        {
+          "name": "ECR login (pull-through cache)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-action-gate/actions/runs/42440629736/job/128608903976"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-action-gate/actions/runs/42440629729/job/128608902361"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-action-gate/actions/runs/42440629729/job/128608902239"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-action-gate/actions/runs/42440629729/job/128608901435"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "0b96b17ba7b3231c26468db6e6bb1d9728a4498f44d6a510c28ee16244a68370"
+    },
+    {
+      "repository": "VelnorLabs/velnor-workers",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "492eff513b134fba980d89abf83cfa9fd5a3f46b",
+      "source_ci": {
+        "id": 42393563574,
+        "head_sha": "492eff513b134fba980d89abf83cfa9fd5a3f46b",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-workers/actions/runs/42393563574"
+      },
+      "native_version_files": {},
+      "pipeline_pr": {
+        "number": 82,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": true,
+        "mergeable_state": "clean",
+        "html_url": "https://github.com/VelnorLabs/velnor-workers/pull/82"
+      },
+      "pipeline_head_sha": "9209ce9ef5525cea5013805c3b9489081ac8df3c",
+      "pipeline_checks": [
+        {
+          "name": "ci / Stage 2 \u00b7 build \u2192 push \u2192 cosign sign",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-workers/actions/runs/42440691115/job/128610121459"
+        },
+        {
+          "name": "SDK bypass check / SDK bypass check (go)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-workers/actions/runs/42440691115/job/128610120754"
+        },
+        {
+          "name": "jsonb-audit \u00b7 real Postgres",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-workers/actions/runs/42440691115/job/128609173226"
+        },
+        {
+          "name": "ci / Stage 1 \u00b7 lint \u2192 unit \u2192 build \u2192 Trivy \u2192 SBOM \u2192 PII lint",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-workers/actions/runs/42440691115/job/128609156405"
+        },
+        {
+          "name": "Lambda build (PR verification)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-workers/actions/runs/42440691115/job/128609156320"
+        },
+        {
+          "name": "ECR login (pull-through cache)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-workers/actions/runs/42440691115/job/128609156103"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-workers/actions/runs/42440691150/job/128609092281"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-workers/actions/runs/42440691150/job/128609092275"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-workers/actions/runs/42440691150/job/128609091173"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "9fc52329b610835d636a248e16800b12d95737a2b4423eee1a4b6ca60cfaa927"
+    },
+    {
+      "repository": "VelnorLabs/velnor-store-compliance-worker",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "22fcd465add0dea9dff1584e50a19173dc384284",
+      "source_ci": {
+        "id": 41169607351,
+        "head_sha": "22fcd465add0dea9dff1584e50a19173dc384284",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-store-compliance-worker/actions/runs/41169607351"
+      },
+      "native_version_files": {},
+      "pipeline_pr": {
+        "number": 25,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": true,
+        "mergeable_state": "clean",
+        "html_url": "https://github.com/VelnorLabs/velnor-store-compliance-worker/pull/25"
+      },
+      "pipeline_head_sha": "1585ab0b741db16298d61af501fc4edf4a2aa784",
+      "pipeline_checks": [
+        {
+          "name": "Deploy dev",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-store-compliance-worker/actions/runs/42440686905/job/128609759423"
+        },
+        {
+          "name": "ci / Stage 2 \u00b7 build \u2192 push \u2192 cosign sign",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-store-compliance-worker/actions/runs/42440686905/job/128609758534"
+        },
+        {
+          "name": "SDK bypass check / SDK bypass check (go)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-store-compliance-worker/actions/runs/42440686905/job/128609758255"
+        },
+        {
+          "name": "Compliance audit authority (PostgreSQL 16)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-store-compliance-worker/actions/runs/42440686905/job/128609181195"
+        },
+        {
+          "name": "ci / Stage 1 \u00b7 lint \u2192 unit \u2192 build \u2192 Trivy \u2192 SBOM \u2192 PII lint",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-store-compliance-worker/actions/runs/42440686905/job/128609136731"
+        },
+        {
+          "name": "ECR login (pull-through cache)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-store-compliance-worker/actions/runs/42440686905/job/128609136528"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-store-compliance-worker/actions/runs/42440686915/job/128609077874"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-store-compliance-worker/actions/runs/42440686915/job/128609077838"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-store-compliance-worker/actions/runs/42440686915/job/128609077064"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "691944daddd643cb4f3493991365eb6385dd3b45568a6ae6def35afb5fd4be79"
+    },
+    {
+      "repository": "VelnorLabs/velnor-embed-worker",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "20ea3b4baf4c3f01de166adccff82f75c3659fce",
+      "source_ci": {
+        "id": 41860255397,
+        "head_sha": "20ea3b4baf4c3f01de166adccff82f75c3659fce",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-embed-worker/actions/runs/41860255397"
+      },
+      "native_version_files": {
+        "pyproject.toml": "version = \"0.1.0\""
+      },
+      "pipeline_pr": {
+        "number": 37,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": true,
+        "mergeable_state": "clean",
+        "html_url": "https://github.com/VelnorLabs/velnor-embed-worker/pull/37"
+      },
+      "pipeline_head_sha": "1244f20a6b2d67e9a28157259c9701f18c1d88ab",
+      "pipeline_checks": [
+        {
+          "name": "Deploy dev",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-embed-worker/actions/runs/42440674529/job/128610681958"
+        },
+        {
+          "name": "ci / Stage 2 \u00b7 build \u2192 push \u2192 cosign sign",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-embed-worker/actions/runs/42440674529/job/128610681568"
+        },
+        {
+          "name": "SDK bypass check / SDK bypass check (py)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-embed-worker/actions/runs/42440674529/job/128610680976"
+        },
+        {
+          "name": "Document authority (PostgreSQL 16)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-embed-worker/actions/runs/42440674529/job/128609167241"
+        },
+        {
+          "name": "ECR login (pull-through cache)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-embed-worker/actions/runs/42440674529/job/128609096586"
+        },
+        {
+          "name": "ci / Stage 1 \u00b7 lint \u2192 unit \u2192 build \u2192 Trivy \u2192 SBOM \u2192 PII lint",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-embed-worker/actions/runs/42440674529/job/128609096367"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-embed-worker/actions/runs/42440674592/job/128609067903"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-embed-worker/actions/runs/42440674592/job/128609038671"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-embed-worker/actions/runs/42440674592/job/128609037908"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "03f4f7cef1d63dc4ae9cbe778ace294d46086e48a951b6eed32abff2223a1d4a"
+    },
+    {
+      "repository": "VelnorLabs/velnor-agent-gateway",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "bc69c6f1dcd94c719ac46abdb8c84dbbef67ac0e",
+      "source_ci": {
+        "id": 44690449186,
+        "head_sha": "bc69c6f1dcd94c719ac46abdb8c84dbbef67ac0e",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-agent-gateway/actions/runs/44690449186"
+      },
+      "native_version_files": {
+        "pyproject.toml": "version = \"0.1.0\""
+      },
+      "pipeline_pr": {
+        "number": 84,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": null,
+        "mergeable_state": "unknown",
+        "html_url": "https://github.com/VelnorLabs/velnor-agent-gateway/pull/84"
+      },
+      "pipeline_head_sha": "850d497dfe32f970f003b67f0491ac0fd16bc731",
+      "pipeline_checks": [
+        {
+          "name": "ci / Stage 2 \u00b7 build \u2192 push \u2192 cosign sign",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-agent-gateway/actions/runs/42440670364/job/128611658010"
+        },
+        {
+          "name": "Deploy dev",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-agent-gateway/actions/runs/42440670364/job/128611657997"
+        },
+        {
+          "name": "SDK bypass check / SDK bypass check (py)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-agent-gateway/actions/runs/42440670364/job/128611657276"
+        },
+        {
+          "name": "Checkpointer integration (Postgres)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-agent-gateway/actions/runs/42440670364/job/128609116391"
+        },
+        {
+          "name": "ECR login (pull-through cache)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-agent-gateway/actions/runs/42440670364/job/128609075536"
+        },
+        {
+          "name": "ci / Stage 1 \u00b7 lint \u2192 unit \u2192 build \u2192 Trivy \u2192 SBOM \u2192 PII lint",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-agent-gateway/actions/runs/42440670364/job/128609075353"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-agent-gateway/actions/runs/42440670356/job/128609025113"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-agent-gateway/actions/runs/42440670356/job/128609024622"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-agent-gateway/actions/runs/42440670356/job/128609023812"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [
+        {
+          "file": "/Volumes/MacOS-Ext/CoWork/SMB-SaaS/platform-intelligence-20261111/evidence/velnor-agent-gateway-release-20261120T065226Z/signed-release.json",
+          "sha256": "e1b8347338fb8c3508d6917d10497746de157143eb715640ca24c78c80ab4418",
+          "record": {
+            "status": "verified",
+            "verified_at": "2026-11-20T06:52:33.623341+00:00",
+            "repository": "velnor-agent-gateway",
+            "source": "bc69c6f1dcd94c719ac46abdb8c84dbbef67ac0e",
+            "image_uri": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-agent-gateway@sha256:360f094194c3b287f84e7346cf76978ea958af1a3516577123b75c26312fd0ed",
+            "image_digest": "sha256:360f094194c3b287f84e7346cf76978ea958af1a3516577123b75c26312fd0ed",
+            "config_digest": "sha256:561fcaaa8e3c2b921dce28b1eabc09bc9980af2baaf566eb0a4033d461918bab",
+            "source_labels_verified": true,
+            "platform": "linux/amd64",
+            "checks": [
+              {
+                "operation": "verify",
+                "verified_count": 1,
+                "transparency_verification_enabled": true
+              },
+              {
+                "operation": "verify-attestation",
+                "verified_count": 1,
+                "transparency_verification_enabled": true
+              }
+            ],
+            "components": [
+              {
+                "name": "velnor-platform-sdk",
+                "version": "0.12.1"
+              }
+            ],
+            "build_run": 44690449186,
+            "temporary_registry_credentials_removed": true,
+            "no_runtime_deployment": true
+          },
+          "live_development_digest_matches": true,
+          "cryptography_reverified_this_audit": false
+        }
+      ],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "26549adf4ac1dedb5cb14e512d69ad41ba3c57c0d845335e45a36ceb5cb79634"
+    },
+    {
+      "repository": "VelnorLabs/velnor-chat-api",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "831cef30714aa5a039294532b4b5375c97c95384",
+      "source_ci": {
+        "id": 45315955704,
+        "head_sha": "831cef30714aa5a039294532b4b5375c97c95384",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-chat-api/actions/runs/45315955704"
+      },
+      "native_version_files": {},
+      "pipeline_pr": {
+        "number": 232,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": null,
+        "mergeable_state": "unknown",
+        "html_url": "https://github.com/VelnorLabs/velnor-chat-api/pull/232"
+      },
+      "pipeline_head_sha": "f201ccd9e6791caf8351728091c6abac12c94696",
+      "pipeline_checks": [
+        {
+          "name": "Deploy dev",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-chat-api/actions/runs/42440672686/job/128609884417"
+        },
+        {
+          "name": "ci / Stage 2 \u00b7 build \u2192 push \u2192 cosign sign",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-chat-api/actions/runs/42440672686/job/128609884054"
+        },
+        {
+          "name": "SDK bypass check / SDK bypass check (py)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-chat-api/actions/runs/42440672686/job/128609883537"
+        },
+        {
+          "name": "ci / Stage 1 \u00b7 lint \u2192 unit \u2192 build \u2192 Trivy \u2192 SBOM \u2192 PII lint",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-chat-api/actions/runs/42440672686/job/128609033514"
+        },
+        {
+          "name": "chat-tools-manifest-sync",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-chat-api/actions/runs/42440672686/job/128609033464"
+        },
+        {
+          "name": "turn-state-postgres",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-chat-api/actions/runs/42440672686/job/128609033445"
+        },
+        {
+          "name": "boundary-yaml-schema",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-chat-api/actions/runs/42440672686/job/128609033437"
+        },
+        {
+          "name": "boundary-corpus-gate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-chat-api/actions/runs/42440672686/job/128609033285"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-chat-api/actions/runs/42440672700/job/128609032327"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-chat-api/actions/runs/42440672700/job/128609032199"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-chat-api/actions/runs/42440672700/job/128609031586"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [
+        {
+          "file": "/Volumes/MacOS-Ext/CoWork/SMB-SaaS/platform-intelligence-20261111/evidence/velnor-chat-api-release-20261124T030049Z/signed-release.json",
+          "sha256": "f22893b6e896ee5380983ee5513da85c229f2574727648c284d88de810cd15ea",
+          "record": {
+            "status": "verified",
+            "verified_at": "2026-11-24T03:00:56.443130+00:00",
+            "repository": "velnor-chat-api",
+            "source": "831cef30714aa5a039294532b4b5375c97c95384",
+            "image_uri": "113831183566.dkr.ecr.us-east-1.amazonaws.com/velnor-chat-api@sha256:87cd257d1fd2f5d30390beef00a5512275aa7ef6ef440323cf1b949fe27f3b9c",
+            "image_digest": "sha256:87cd257d1fd2f5d30390beef00a5512275aa7ef6ef440323cf1b949fe27f3b9c",
+            "config_digest": "sha256:c10c61bb06c84c188d4fc9e7608ccf19c2b8e644eb9686f382c681fb5b0f016e",
+            "source_labels_verified": true,
+            "platform": "linux/amd64",
+            "checks": [
+              {
+                "operation": "verify",
+                "verified_count": 1,
+                "transparency_verification_enabled": true
+              },
+              {
+                "operation": "verify-attestation",
+                "verified_count": 1,
+                "transparency_verification_enabled": true
+              }
+            ],
+            "components": [
+              {
+                "name": "velnor-platform-sdk",
+                "version": "0.12.1"
+              },
+              {
+                "name": "velnor-schemas",
+                "version": "0.153.0"
+              }
+            ],
+            "build_run": 45315955704,
+            "temporary_registry_credentials_removed": true,
+            "no_runtime_deployment": true
+          },
+          "live_development_digest_matches": true,
+          "cryptography_reverified_this_audit": false
+        }
+      ],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "0b68251a3e3e2e8ba850321da97316961f25be788203be0ef0e2be170af4f1ce"
+    },
+    {
+      "repository": "VelnorLabs/velnor-web",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "5455ddabae3921cd56a8c468dc0c0d6e0a35eae9",
+      "source_ci": {
+        "id": 44978656715,
+        "head_sha": "5455ddabae3921cd56a8c468dc0c0d6e0a35eae9",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-web/actions/runs/44978656715"
+      },
+      "native_version_files": {
+        "package.json": "0.0.1"
+      },
+      "pipeline_pr": {
+        "number": 229,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": null,
+        "mergeable_state": "unknown",
+        "html_url": "https://github.com/VelnorLabs/velnor-web/pull/229"
+      },
+      "pipeline_head_sha": "879e8b42ec650852022a2e352e638580fe17e38e",
+      "pipeline_checks": [
+        {
+          "name": "Security scan",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-web/actions/runs/42440689781/job/128611249600"
+        },
+        {
+          "name": "Visual regression (UI eval gate)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-web/actions/runs/42440689781/job/128611249568"
+        },
+        {
+          "name": "Contract coverage gate / Contract coverage gate (routes and calls declared in the spec)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-web/actions/runs/42440689781/job/128609089092"
+        },
+        {
+          "name": "Design tokens gate (no hardcoded styles) / Design tokens gate (no hardcoded styles)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-web/actions/runs/42440689781/job/128609089031"
+        },
+        {
+          "name": "Screen contracts gate / Screen contracts gate (every route has a green contract; every bound op is callable)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-web/actions/runs/42440689781/job/128609089021"
+        },
+        {
+          "name": "Typecheck \u00b7 Lint \u00b7 Test \u00b7 Build",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-web/actions/runs/42440689781/job/128609088856"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-web/actions/runs/42440689990/job/128609088707"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-web/actions/runs/42440689990/job/128609088500"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-web/actions/runs/42440689990/job/128609087432"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "17551a48009c0e5131ffcf4063b15a8980865cce47d71ded31fab4458afa8a15"
+    },
+    {
+      "repository": "VelnorLabs/velnor-admin-web",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "8b37b3d60e28bdb84dd3e952c5801daed6e4fa20",
+      "source_ci": {
+        "id": 42260644389,
+        "head_sha": "8b37b3d60e28bdb84dd3e952c5801daed6e4fa20",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-admin-web/actions/runs/42260644389"
+      },
+      "native_version_files": {
+        "package.json": "0.0.1"
+      },
+      "pipeline_pr": {
+        "number": 51,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": true,
+        "mergeable_state": "unstable",
+        "html_url": "https://github.com/VelnorLabs/velnor-admin-web/pull/51"
+      },
+      "pipeline_head_sha": "04cb4a536329637543f978a7a52c100374f1b489",
+      "pipeline_checks": [
+        {
+          "name": "Visual regression (UI eval gate)",
+          "conclusion": "failure",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-web/actions/runs/42440669083/job/128609335239"
+        },
+        {
+          "name": "Security scan",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-web/actions/runs/42440669083/job/128609335221"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-web/actions/runs/42440669104/job/128609048339"
+        },
+        {
+          "name": "Design tokens gate (no hardcoded styles) / Design tokens gate (no hardcoded styles)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-web/actions/runs/42440669083/job/128609021677"
+        },
+        {
+          "name": "Typecheck \u00b7 Lint \u00b7 Test \u00b7 Build",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-web/actions/runs/42440669083/job/128609021467"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-web/actions/runs/42440669104/job/128609020889"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-admin-web/actions/runs/42440669104/job/128609020199"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "f8f053e1d2307c81bdd1791fe977c983f28ca6c7f57ccdb07c2398887faf0006"
+    },
+    {
+      "repository": "VelnorLabs/velnor-evals",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "c53b87826f5bcec08e856c124edc4d74b5555284",
+      "source_ci": {
+        "id": 41169590969,
+        "head_sha": "c53b87826f5bcec08e856c124edc4d74b5555284",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-evals/actions/runs/41169590969"
+      },
+      "native_version_files": {
+        "pyproject.toml": "version = \"0.1.0\""
+      },
+      "pipeline_pr": {
+        "number": 105,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": true,
+        "mergeable_state": "clean",
+        "html_url": "https://github.com/VelnorLabs/velnor-evals/pull/105"
+      },
+      "pipeline_head_sha": "2bf070ec901cb62ffac6814e188690372b85cf1e",
+      "pipeline_checks": [
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-evals/actions/runs/42440676806/job/128609045665"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-evals/actions/runs/42440676806/job/128609045512"
+        },
+        {
+          "name": "Trivy security scan",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-evals/actions/runs/42440676565/job/128609045369"
+        },
+        {
+          "name": "Lint + Test",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-evals/actions/runs/42440676565/job/128609045200"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-evals/actions/runs/42440676806/job/128609044852"
+        },
+        {
+          "name": "eval-on-pr / eval/on-pr",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-evals/actions/runs/42440676754/job/128609044552"
+        },
+        {
+          "name": "composite-only gate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-evals/actions/runs/42440676617/job/128609044393"
+        },
+        {
+          "name": "PRD-2 AC-1..AC-10 exit gate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-evals/actions/runs/42440676609/job/128609044321"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "9d8f59437de06b02e00afd67bbc0beeb628fd4891782d9c93a6fa8bb597809d9"
+    },
+    {
+      "repository": "VelnorLabs/velnor-mobile",
+      "proposed_release_tag": "release/v1.0.0",
+      "source_sha": "ad0b99e48c29917bf0eca6932ce54447857aefb7",
+      "source_ci": {
+        "id": 45316944634,
+        "head_sha": "ad0b99e48c29917bf0eca6932ce54447857aefb7",
+        "conclusion": null,
+        "status": "queued",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/velnor-mobile/actions/runs/45316944634"
+      },
+      "native_version_files": {
+        "package.json": "0.0.1"
+      },
+      "pipeline_pr": {
+        "number": 99,
+        "state": "open",
+        "draft": true,
+        "merged": false,
+        "mergeable": null,
+        "mergeable_state": "unknown",
+        "html_url": "https://github.com/VelnorLabs/velnor-mobile/pull/99"
+      },
+      "pipeline_head_sha": "442ac16241beedbf2bb1f645a317c600ba26d852",
+      "pipeline_checks": [
+        {
+          "name": "Development delivery",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-mobile/actions/runs/42440678276/job/128610582339"
+        },
+        {
+          "name": "Native build and startup (android)",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-mobile/actions/runs/42440678276/job/128609942111"
+        },
+        {
+          "name": "matrix.name",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-mobile/actions/runs/42440678276/job/128609941746"
+        },
+        {
+          "name": "Security scan",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-mobile/actions/runs/42440678276/job/128609940700"
+        },
+        {
+          "name": "Visual regression (UI eval gate)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-mobile/actions/runs/42440678276/job/128609940644"
+        },
+        {
+          "name": "Native build scope",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-mobile/actions/runs/42440678276/job/128609095908"
+        },
+        {
+          "name": "Design tokens gate (no hardcoded styles) / Design tokens gate (no hardcoded styles)",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-mobile/actions/runs/42440678276/job/128609095907"
+        },
+        {
+          "name": "Typecheck \u00b7 Lint \u00b7 Test",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-mobile/actions/runs/42440678276/job/128609095790"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-mobile/actions/runs/42440678253/job/128609050887"
+        },
+        {
+          "name": "validate / publish",
+          "conclusion": "skipped",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-mobile/actions/runs/42440678253/job/128609050576"
+        },
+        {
+          "name": "validate / validate",
+          "conclusion": "success",
+          "status": "completed",
+          "details_url": "https://github.com/VelnorLabs/velnor-mobile/actions/runs/42440678253/job/128609049869"
+        }
+      ],
+      "immutable_settings": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "signed_build_evidence": [],
+      "release_published": false,
+      "development_acceptance_complete": false,
+      "audit_file_sha256": "d13070ee358f2c8fcaab4c07213e500da438eedd36febd242838f7372f3beb88"
+    }
+  ],
+  "controller": {
+    "repository": "VelnorLabs/.github",
+    "main_sha": "dc46940f0df59d0e208908a059c968032d035d19",
+    "pipeline_pr": {
+      "number": 61,
+      "state": "open",
+      "draft": true,
+      "merged": false,
+      "mergeable": true,
+      "mergeable_state": "behind",
+      "html_url": "https://github.com/VelnorLabs/.github/pull/61"
+    },
+    "pipeline_head_sha": "c7eba33c49f2330945b740582ba8d47f31699822",
+    "main_runs": [
+      {
+        "id": 45309828735,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "dc46940f0df59d0e208908a059c968032d035d19",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/45309828735",
+        "created_at": "2026-11-24T02:05:41Z"
+      },
+      {
+        "id": 45305034306,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "dc46940f0df59d0e208908a059c968032d035d19",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/45305034306",
+        "created_at": "2026-11-24T01:26:18Z"
+      },
+      {
+        "id": 45188726086,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "dc46940f0df59d0e208908a059c968032d035d19",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/45188726086",
+        "created_at": "2026-11-23T13:55:20Z"
+      },
+      {
+        "id": 45098283105,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "dc46940f0df59d0e208908a059c968032d035d19",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/45098283105",
+        "created_at": "2026-11-23T02:06:30Z"
+      },
+      {
+        "id": 45066965294,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "dc46940f0df59d0e208908a059c968032d035d19",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/45066965294",
+        "created_at": "2026-11-22T20:32:04Z"
+      },
+      {
+        "id": 45029811151,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "dc46940f0df59d0e208908a059c968032d035d19",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/45029811151",
+        "created_at": "2026-11-22T13:53:01Z"
+      },
+      {
+        "id": 44985499314,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "dc46940f0df59d0e208908a059c968032d035d19",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44985499314",
+        "created_at": "2026-11-22T04:32:24Z"
+      },
+      {
+        "id": 44957904925,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "dc46940f0df59d0e208908a059c968032d035d19",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44957904925",
+        "created_at": "2026-11-21T22:39:52Z"
+      },
+      {
+        "id": 44927744538,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "dc46940f0df59d0e208908a059c968032d035d19",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44927744538",
+        "created_at": "2026-11-21T17:01:28Z"
+      },
+      {
+        "id": 44887679228,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "dc46940f0df59d0e208908a059c968032d035d19",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44887679228",
+        "created_at": "2026-11-21T09:02:39Z"
+      },
+      {
+        "id": 44847435008,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "dc46940f0df59d0e208908a059c968032d035d19",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44847435008",
+        "created_at": "2026-11-21T00:59:59Z"
+      },
+      {
+        "id": 44829663658,
+        "name": "CI",
+        "path": ".github/workflows/ci.yml",
+        "head_sha": "dc46940f0df59d0e208908a059c968032d035d19",
+        "event": "push",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44829663658",
+        "created_at": "2026-11-20T22:31:35Z"
+      },
+      {
+        "id": 44790479243,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44790479243",
+        "created_at": "2026-11-20T18:11:55Z"
+      },
+      {
+        "id": 44711302146,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44711302146",
+        "created_at": "2026-11-20T09:30:32Z"
+      },
+      {
+        "id": 44654634144,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44654634144",
+        "created_at": "2026-11-20T01:34:48Z"
+      },
+      {
+        "id": 44591150367,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44591150367",
+        "created_at": "2026-11-19T18:45:23Z"
+      },
+      {
+        "id": 44499002990,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44499002990",
+        "created_at": "2026-11-19T09:43:17Z"
+      },
+      {
+        "id": 44438064090,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44438064090",
+        "created_at": "2026-11-19T01:35:35Z"
+      },
+      {
+        "id": 44371013019,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44371013019",
+        "created_at": "2026-11-18T18:33:30Z"
+      },
+      {
+        "id": 44277426777,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44277426777",
+        "created_at": "2026-11-18T09:35:59Z"
+      },
+      {
+        "id": 44207063279,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44207063279",
+        "created_at": "2026-11-18T00:20:50Z"
+      },
+      {
+        "id": 44135100981,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44135100981",
+        "created_at": "2026-11-17T17:16:11Z"
+      },
+      {
+        "id": 44030165121,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44030165121",
+        "created_at": "2026-11-17T06:17:53Z"
+      },
+      {
+        "id": 43983438062,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/43983438062",
+        "created_at": "2026-11-16T23:55:52Z"
+      },
+      {
+        "id": 43886115390,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/43886115390",
+        "created_at": "2026-11-16T14:28:36Z"
+      },
+      {
+        "id": 43802919560,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/43802919560",
+        "created_at": "2026-11-16T04:14:55Z"
+      },
+      {
+        "id": 43768872834,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/43768872834",
+        "created_at": "2026-11-15T22:21:50Z"
+      },
+      {
+        "id": 43737110861,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/43737110861",
+        "created_at": "2026-11-15T16:43:54Z"
+      },
+      {
+        "id": 43695754892,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/43695754892",
+        "created_at": "2026-11-15T08:42:26Z"
+      },
+      {
+        "id": 43663217923,
+        "name": ".github/workflows/_schema-sla-watch.yml",
+        "path": ".github/workflows/_schema-sla-watch.yml",
+        "head_sha": "535c58c74a1e3c8406fafe45e9918cd91405a860",
+        "event": "schedule",
+        "status": "completed",
+        "conclusion": "startup_failure",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/43663217923",
+        "created_at": "2026-11-15T01:28:04Z"
+      }
+    ],
+    "releases": [],
+    "immutable_settings": {
+      "enabled": false,
+      "enforced_by_owner": false
+    },
+    "production_environment": {
+      "error": "gh: Not Found (HTTP 404)"
+    },
+    "production_variables": [],
+    "secret_names": [],
+    "exact_ci": [
+      {
+        "id": 44829663658,
+        "head_sha": "dc46940f0df59d0e208908a059c968032d035d19",
+        "conclusion": "success",
+        "status": "completed",
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "html_url": "https://github.com/VelnorLabs/.github/actions/runs/44829663658"
+      }
+    ],
+    "ci_jobs": [
+      {
+        "id": 136611098242,
+        "name": "ci",
+        "conclusion": "success",
+        "status": "completed"
+      }
+    ],
+    "pipeline_checks": [
+      {
+        "name": "ci",
+        "conclusion": "success",
+        "status": "completed",
+        "details_url": "https://github.com/VelnorLabs/.github/actions/runs/42440612109/job/128608844515"
+      }
+    ],
+    "native_versions": {}
+  },
+  "runtime_inventory_sha256": "f7bcfe97f069199337ed0181744e8e3c386928c05b71f9c844be59cc645aaea2"
+}
